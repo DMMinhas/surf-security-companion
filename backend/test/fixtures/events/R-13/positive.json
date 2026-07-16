@@ -1,0 +1,13 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r13-p-1",
+    "observer.product": "keycloak",
+    "observer.service": "admin-events",
+    "event.action": "CREATE",
+    "keycloak.resource_type": "CLIENT",
+    "keycloak.service_account_enabled": true,
+    "surf.enrichment.in_change_window": false,
+    "user.name": "petra"
+  }
+]

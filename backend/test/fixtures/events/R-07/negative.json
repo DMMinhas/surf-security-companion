@@ -1,0 +1,12 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r07-n-1",
+    "observer.product": "mqtt",
+    "observer.service": "broker",
+    "surf.command.type": "schedule",
+    "surf.command.signed": true,
+    "surf.command.id": "cmd-2",
+    "host.name": "mqtt-01"
+  }
+]

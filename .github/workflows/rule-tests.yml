@@ -1,0 +1,22 @@
+name: rule-tests
+
+on:
+  push:
+    paths: ['rules/**', 'backend/src/correlation/**', 'backend/test/fixtures/**', 'backend/test/rules/**']
+  pull_request:
+    paths: ['rules/**', 'backend/src/correlation/**', 'backend/test/fixtures/**', 'backend/test/rules/**']
+
+jobs:
+  sigma-validate-and-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Validate all Sigma rules against the schema
+        run: npm run rules:validate
+      - name: Compile Sigma → Wazuh (dry-run)
+        run: npm run rules:convert -- --dry-run > /dev/null
+      - name: Rule fixture gate (positive must match, negative must not)
+        run: npm run test:rules

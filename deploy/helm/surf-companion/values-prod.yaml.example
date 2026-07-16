@@ -1,0 +1,35 @@
+# Production overlay example. Copy to values-prod.yaml and adjust; never commit real secrets.
+replicaCount:
+  backend: 3
+  frontend: 3
+
+image:
+  pullPolicy: IfNotPresent
+  backend: { tag: "1.0.0" }
+  frontend: { tag: "1.0.0" }
+
+backend:
+  resources:
+    requests: { cpu: "1", memory: 512Mi }
+    limits: { cpu: "2", memory: 1Gi }
+  env:
+    OIDC_ISSUER_URL: https://keycloak.prod.surf.example/realms/surf-security
+
+ingress:
+  host: soc.prod.surf.example
+  tls:
+    enabled: true
+    secretName: surf-companion-prod-tls
+
+externalSecrets:
+  enabled: true
+  secretStoreRef: { name: vault-prod, kind: ClusterSecretStore }
+  remotePathPrefix: secret/prod/surf-companion
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 12
+
+# Admission control refuses unsigned images in prod; images must be cosign-verified.
+imagePullPolicy: IfNotPresent

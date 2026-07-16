@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", "docker:enableMajor"],
+  "labels": ["dependencies"],
+  "vulnerabilityAlerts": { "labels": ["security"], "automerge": false },
+  "packageRules": [
+    { "matchUpdateTypes": ["minor", "patch"], "matchCurrentVersion": "!/^0/", "automerge": true },
+    { "matchManagers": ["dockerfile", "docker-compose"], "groupName": "container images" }
+  ],
+  "osvVulnerabilityAlerts": true
+}

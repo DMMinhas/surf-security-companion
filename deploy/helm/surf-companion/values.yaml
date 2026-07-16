@@ -1,0 +1,80 @@
+# Default values — dev/staging posture. See values-prod.yaml.example for production hardening.
+image:
+  registry: ghcr.io/surf-project
+  backend:
+    repository: surf-companion-backend
+    tag: "0.1.0"
+  frontend:
+    repository: surf-companion-frontend
+    tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount:
+  backend: 2
+  frontend: 2
+
+backend:
+  port: 8080
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  env:
+    NODE_ENV: production
+    OIDC_ISSUER_URL: https://keycloak.surf.example/realms/surf-security
+    OIDC_AUDIENCE: surf-companion-backend
+    OIDC_JWKS_URI: https://keycloak.surf.example/realms/surf-security/protocol/openid-connect/certs
+    TENANT_CLAIM: surf_tenant_id
+    PLAYBOOK_DRY_RUN_DEFAULT: "true"
+    PLAYBOOK_REQUIRE_STEPUP: "true"
+    PLAYBOOK_MASS_ACTION_THRESHOLD: "10"
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
+frontend:
+  port: 8081
+
+# Non-secret config → ConfigMap; secrets → External Secrets Operator (secret-external.yaml)
+externalSecrets:
+  enabled: true
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  remotePathPrefix: secret/surf-companion
+
+ingress:
+  enabled: true
+  className: nginx
+  host: soc.surf.example
+  tls:
+    enabled: true
+    secretName: surf-companion-tls
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload";
+      more_set_headers "X-Frame-Options: DENY";
+
+service:
+  type: ClusterIP
+
+# Pod hardening (PodSecurity "restricted" compatible)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  seccompProfile: { type: RuntimeDefault }
+  capabilities: { drop: ["ALL"] }
+
+networkPolicy:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+  interval: 15s
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70

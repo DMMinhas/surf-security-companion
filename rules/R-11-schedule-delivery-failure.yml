@@ -1,0 +1,36 @@
+title: Repeated schedule delivery failures to EMS
+id: 8e1a3c67-9f5d-4b02-a4e8-61d0b2cf0f11
+status: stable
+description: >
+  Detects 10 or more failed schedule deliveries (broker PUBACK timeout or
+  negative EMS acknowledgement) to the same EMS device within 30 minutes.
+  Persistent delivery failure denies the flexibility service and can mask a
+  device compromise or a selective blocking attack on the last mile.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/ics/T0815/
+tags:
+  - attack.ics.T0815
+  - surf.threat.AV-15
+  - nis2.art.21.2.c
+level: medium
+logsource:
+  product: mqtt
+  service: broker
+detection:
+  selection:
+    event.action: schedule_delivery
+    event.outcome: failure
+  timeframe: 30m
+  condition: selection | count() by surf.ems.id >= 10
+falsepositives:
+  - Rural EMS devices behind flaky cellular links (tune per-device thresholds)
+  - Planned EMS maintenance windows
+owner: detection-team@surf
+surf.threat_id: AV-15
+surf.compliance:
+  - "NIS2 Art. 21(2)(c)"
+  - "IEC 62443-3-3 FR7.1"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.14"

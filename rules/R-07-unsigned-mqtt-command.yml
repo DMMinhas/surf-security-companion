@@ -1,0 +1,33 @@
+title: Unsigned command received at MQTT broker
+id: 3f2d1c76-9a5b-4e0e-b7f4-9bde5b60c9f2
+status: stable
+description: >
+  Detects any MQTT publish on a command topic whose payload lacks
+  a valid Ed25519 signature. Indicates AV-12 mass-curtailment forgery
+  or misconfigured signing service.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://miro.com/app/board/uXjVHUESfLk=/
+tags:
+  - attack.ics.T0836
+  - surf.threat.AV-12
+  - iec.62443.FR3
+  - nis2.art.21.2.h
+level: critical
+logsource:
+  product: mqtt
+  service: broker
+detection:
+  selection:
+    surf.command.type|contains: "schedule"
+    surf.command.signed: false
+  condition: selection
+falsepositives:
+  - Test environments publishing unsigned test commands (tag topic as `test/*`)
+owner: detection-team@surf
+surf.threat_id: AV-12
+surf.compliance:
+  - "NIS2 Art. 21(2)(h)"
+  - "IEC 62443-3-3 FR3.1"
+  - "KRITIS §8a BSIG"

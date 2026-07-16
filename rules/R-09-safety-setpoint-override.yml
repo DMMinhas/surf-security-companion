@@ -1,0 +1,35 @@
+title: Safety-setpoint override attempt
+id: 6a2c8e50-7d4b-4913-85f0-29b6c4ef0f09
+status: stable
+description: >
+  Detects any command that attempts to set an EMS operating parameter outside
+  its engineered safety envelope (e.g. charge/discharge rate beyond hardware
+  limits, frequency-protection thresholds relaxed). The SURF Engine flags the
+  violation at validation time; a flagged command that was still transmitted
+  is a critical control-integrity failure.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/ics/T0836/
+tags:
+  - attack.ics.T0836
+  - surf.threat.AV-13
+  - nis2.art.21.2.e
+level: critical
+logsource:
+  product: surf-engine
+  service: validation
+detection:
+  selection:
+    event.action: setpoint_validation
+    surf.command.safety_envelope_violation: true
+  condition: selection
+falsepositives:
+  - Commissioning of new EMS hardware with not-yet-registered safety envelopes
+owner: detection-team@surf
+surf.threat_id: AV-13
+surf.compliance:
+  - "NIS2 Art. 21(2)(e)"
+  - "IEC 62443-3-3 FR3.5"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.16"

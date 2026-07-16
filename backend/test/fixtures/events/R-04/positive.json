@@ -1,0 +1,14 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r04-p-1",
+    "observer.product": "postgres",
+    "observer.service": "pgaudit",
+    "event.action": "query",
+    "surf.enrichment.cross_tenant_mismatch": true,
+    "user.name": "app_saar",
+    "user.roles": [
+      "DSO_OPERATOR"
+    ]
+  }
+]

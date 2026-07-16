@@ -1,0 +1,34 @@
+title: EMS firmware version rollback
+id: 0d5f7b31-4e8c-4a29-b7d1-58c3a9ef0f10
+status: stable
+description: >
+  Detects an EMS device reporting a firmware version lower than the version
+  it previously reported (semver comparison done by the Wazuh agent inventory
+  diff). Firmware downgrades reintroduce patched vulnerabilities and are a
+  known persistence/evasion technique on field devices.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/ics/T0857/
+tags:
+  - attack.ics.T0857
+  - surf.threat.AV-14
+  - nis2.art.21.2.e
+level: high
+logsource:
+  product: wazuh
+  service: syscollector
+detection:
+  selection:
+    event.action: firmware_inventory
+    surf.enrichment.firmware_downgrade: true
+  condition: selection
+falsepositives:
+  - Vendor-mandated rollback after a faulty firmware release (verify against change ticket)
+owner: detection-team@surf
+surf.threat_id: AV-14
+surf.compliance:
+  - "NIS2 Art. 21(2)(e)"
+  - "IEC 62443-3-3 FR3.4"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.8"

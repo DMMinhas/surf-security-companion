@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "surf-companion.fullname" . }}-backend
+  labels:
+    {{- include "surf-companion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "surf-companion.backendSelector" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.backend.port }}
+      targetPort: {{ .Values.backend.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "surf-companion.fullname" . }}-frontend
+  labels:
+    {{- include "surf-companion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "surf-companion.frontendSelector" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.port }}
+      targetPort: {{ .Values.frontend.port }}

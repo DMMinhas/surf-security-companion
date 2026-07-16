@@ -1,0 +1,35 @@
+title: DB access from IP outside allow-list
+id: e0c5a147-3b8d-4692-a1c4-58f2e9bf0f15
+status: stable
+description: >
+  Detects a successful Postgres connection whose client IP is not in the
+  maintained allow-list (application subnets, bastion, CI runners). Enriched
+  at ingest as surf.enrichment.ip_allowlisted. Direct database access from an
+  unknown address indicates lateral movement or leaked credentials.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/T1078/
+tags:
+  - attack.lateral_movement
+  - attack.t1078
+  - surf.threat.AV-09
+  - nis2.art.21.2.b
+level: high
+logsource:
+  product: postgres
+  service: pgaudit
+detection:
+  selection:
+    event.action: connection_authorized
+    surf.enrichment.ip_allowlisted: false
+  condition: selection
+falsepositives:
+  - New application subnets rolled out before the allow-list was updated
+owner: detection-team@surf
+surf.threat_id: AV-09
+surf.compliance:
+  - "NIS2 Art. 21(2)(b)"
+  - "IEC 62443-3-3 FR1.1"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.20"

@@ -1,0 +1,13 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r12-p-1",
+    "observer.product": "keycloak",
+    "observer.service": "admin-events",
+    "event.action": "UPDATE",
+    "keycloak.resource_type": "REALM_ROLE_MAPPING",
+    "keycloak.operation": "CREATE",
+    "keycloak.role_name": "PLATFORM_ADMIN",
+    "user.name": "petra"
+  }
+]

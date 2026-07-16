@@ -1,0 +1,36 @@
+title: Command signing service failure spike
+id: 2b8d4f96-0c3a-4e15-9d67-84a1b3cd0f06
+status: stable
+description: >
+  Detects 5 or more failures of the SURF command-signing service within
+  5 minutes. If the signing service degrades, unsigned or stale commands may
+  be queued toward EMS devices — a precondition for manipulation-of-control
+  scenarios (data manipulation of grid commands).
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/T1565/
+tags:
+  - attack.impact
+  - attack.t1565
+  - surf.threat.AV-11
+  - nis2.art.21.2.e
+level: critical
+logsource:
+  product: surf-engine
+  service: signing
+detection:
+  selection:
+    event.action: command_sign
+    event.outcome: failure
+  timeframe: 5m
+  condition: selection | count() > 5
+falsepositives:
+  - HSM connectivity blips during planned maintenance windows (suppress via change calendar)
+owner: detection-team@surf
+surf.threat_id: AV-11
+surf.compliance:
+  - "NIS2 Art. 21(2)(e)"
+  - "IEC 62443-3-3 FR3.1"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.24"

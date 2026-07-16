@@ -1,0 +1,5 @@
+[
+  { "@timestamp": "2026-07-14T10:00:00Z", "event.id": "r01-n-1", "observer.product": "keycloak", "observer.service": "events", "event.action": "LOGIN_ERROR", "event.outcome": "failure", "keycloak.error": "invalid_user_credentials", "user.name": "dirk.dso", "source.ip": "203.0.113.66" },
+  { "@timestamp": "2026-07-14T10:00:05Z", "event.id": "r01-n-2", "observer.product": "keycloak", "observer.service": "events", "event.action": "LOGIN_ERROR", "event.outcome": "failure", "keycloak.error": "invalid_user_credentials", "user.name": "dirk.dso", "source.ip": "203.0.113.66" },
+  { "@timestamp": "2026-07-14T10:00:10Z", "event.id": "r01-n-3", "observer.product": "keycloak", "observer.service": "events", "event.action": "LOGIN", "event.outcome": "success", "user.name": "dirk.dso", "source.ip": "203.0.113.66" }
+]

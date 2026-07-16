@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write # cosign keyless
+  security-events: write # CodeQL
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workspace: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w ${{ matrix.workspace }}
+      - run: npm run typecheck -w ${{ matrix.workspace }}
+      - run: npm run test -w ${{ matrix.workspace }}
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Testcontainers uses the host Docker daemon (present on ubuntu-latest)
+      - run: npm run test:integration
+
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with: { languages: javascript-typescript }
+      - uses: github/codeql-action/analyze@v3
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-scan-sign:
+    needs: [lint-typecheck-test, integration]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.image }}
+          platforms: linux/amd64,linux/arm64
+          tags: surf-companion-${{ matrix.image }}:${{ github.sha }}
+          load: false
+          outputs: type=docker,dest=/tmp/${{ matrix.image }}.tar
+      - name: Trivy scan (fail on High/Critical)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          input: /tmp/${{ matrix.image }}.tar
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+      - name: SBOM (CycloneDX via Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          file: /tmp/${{ matrix.image }}.tar
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.image }}.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.image }}
+          path: sbom-${{ matrix.image }}.cdx.json
+      - name: Cosign keyless sign (only on main)
+        if: github.ref == 'refs/heads/main'
+        uses: sigstore/cosign-installer@v3
+      # Actual push + `cosign sign` to the registry happens in the deploy pipeline;
+      # here we prove images build, scan clean, and produce an SBOM.
+
+  e2e:
+    needs: [lint-typecheck-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: ./scripts/gen-dev-certs.sh
+      - run: cp .env.example .env
+      - name: Bring up stack
+        run: docker compose up -d --build
+      - name: Wait for readiness
+        run: |
+          for i in $(seq 1 40); do
+            if curl -skf https://localhost/healthz; then echo ready; break; fi
+            sleep 15
+          done
+      - run: npm run seed
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: always()
+        run: docker compose logs > compose-logs.txt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: e2e-artifacts, path: "playwright-report/**\ncompose-logs.txt" }

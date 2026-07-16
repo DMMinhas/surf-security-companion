@@ -1,0 +1,13 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r02-p-1",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN",
+    "event.outcome": "success",
+    "surf.enrichment.impossible_travel": true,
+    "user.name": "dirk.dso",
+    "source.ip": "198.51.100.7"
+  }
+]

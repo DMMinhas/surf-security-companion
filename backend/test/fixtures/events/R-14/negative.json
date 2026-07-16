@@ -1,0 +1,13 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r14-n-1",
+    "observer.product": "kubernetes",
+    "observer.service": "audit",
+    "kubernetes.audit.verb": "create",
+    "kubernetes.audit.objectRef.resource": "pods",
+    "kubernetes.audit.objectRef.subresource": "exec",
+    "kubernetes.audit.namespace_labels.environment": "staging",
+    "user.name": "ops"
+  }
+]

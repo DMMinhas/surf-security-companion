@@ -1,0 +1,40 @@
+title: "§14a mass-curtailment rate anomaly"
+id: 4c7e9a23-5b1d-4f80-92c6-37f8d0ab0f08
+status: stable
+description: >
+  Detects more than 50 §14a EnWG curtailment commands issued within
+  10 minutes across a single grid section, or any single curtailment batch
+  exceeding 500 kW aggregate magnitude outside a declared grid-emergency
+  window. A coordinated mass curtailment is the highest-impact attack on the
+  SURF platform (loss of DER availability / grid destabilisation).
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/ics/T0813/
+  - https://www.gesetze-im-internet.de/enwg_2005/__14a.html
+tags:
+  - attack.ics.T0813
+  - surf.threat.AV-12
+  - nis2.art.21.2.e
+level: critical
+logsource:
+  product: surf-engine
+  service: dispatch
+detection:
+  selection:
+    event.action: command_dispatch
+    surf.command.type: curtailment
+  filter_emergency:
+    surf.grid.emergency_declared: true
+  timeframe: 10m
+  condition: (selection and not filter_emergency) | count() by surf.grid.section > 50
+falsepositives:
+  - Legitimate declared grid emergencies (must set surf.grid.emergency_declared)
+  - Seasonal §14a dimming campaigns announced via change management
+owner: detection-team@surf
+surf.threat_id: AV-12
+surf.compliance:
+  - "NIS2 Art. 21(2)(e)"
+  - "IEC 62443-3-3 FR3.8"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.16"

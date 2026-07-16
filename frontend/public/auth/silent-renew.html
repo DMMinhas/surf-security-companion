@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Silent token renew</title>
+  </head>
+  <body>
+    <script type="module">
+      import { UserManager } from '/node_modules/oidc-client-ts/dist/browser/oidc-client-ts.min.js';
+      new UserManager({}).signinSilentCallback().catch((err) => console.error('silent renew failed', err));
+    </script>
+  </body>
+</html>

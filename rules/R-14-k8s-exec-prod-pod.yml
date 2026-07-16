@@ -1,0 +1,39 @@
+title: Kubernetes exec into a production pod
+id: d9b4f036-2c7e-4a81-8f52-90e3d7af0f14
+status: stable
+description: >
+  Detects a pods/exec (or attach) subresource call in the Kubernetes audit log
+  against any namespace labelled environment=production. Interactive access to
+  production workloads bypasses the deployment pipeline and must always map to
+  a break-glass ticket.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/T1609/
+tags:
+  - attack.execution
+  - attack.t1609
+  - surf.threat.AV-08
+  - nis2.art.21.2.e
+level: high
+logsource:
+  product: kubernetes
+  service: audit
+detection:
+  selection:
+    kubernetes.audit.verb: create
+    kubernetes.audit.objectRef.resource: pods
+    kubernetes.audit.objectRef.subresource:
+      - exec
+      - attach
+    kubernetes.audit.namespace_labels.environment: production
+  condition: selection
+falsepositives:
+  - Approved break-glass sessions (correlate user with the break-glass roster)
+owner: detection-team@surf
+surf.threat_id: AV-08
+surf.compliance:
+  - "NIS2 Art. 21(2)(e)"
+  - "IEC 62443-3-3 FR2.1"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.9"

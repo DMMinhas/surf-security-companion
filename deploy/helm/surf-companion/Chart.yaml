@@ -1,0 +1,9 @@
+apiVersion: v2
+name: surf-companion
+description: SURF Security Companion — KRITIS SOC portal (backend + frontend). Skeleton chart; the SIEM core (OpenSearch/Wazuh), Keycloak, Postgres and MinIO are expected as managed dependencies or separate charts.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: SURF SOC Team
+    email: soc@surf-project.example

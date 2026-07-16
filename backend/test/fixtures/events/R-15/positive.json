@@ -1,0 +1,12 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r15-p-1",
+    "observer.product": "postgres",
+    "observer.service": "pgaudit",
+    "event.action": "connection_authorized",
+    "surf.enrichment.ip_allowlisted": false,
+    "user.name": "soc_app",
+    "source.ip": "198.51.100.201"
+  }
+]

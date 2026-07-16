@@ -1,0 +1,18 @@
+{{- if .Values.serviceMonitor.enabled }}
+# Prometheus Operator ServiceMonitor scraping the backend /metrics endpoint.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "surf-companion.fullname" . }}
+  labels:
+    {{- include "surf-companion.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "surf-companion.name" . }}
+      app.kubernetes.io/component: backend
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

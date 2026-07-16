@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "surf-companion.fullname" . }}-frontend
+  labels:
+    {{- include "surf-companion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.replicaCount.frontend }}
+  selector:
+    matchLabels:
+      {{- include "surf-companion.frontendSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "surf-companion.labels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        seccompProfile:
+          {{- toYaml .Values.securityContext.seccompProfile | nindent 10 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.registry }}/{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            capabilities:
+              {{- toYaml .Values.securityContext.capabilities | nindent 14 }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: {{ .Values.frontend.port }} }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /healthz, port: {{ .Values.frontend.port }} }
+            initialDelaySeconds: 10
+            periodSeconds: 15

@@ -1,0 +1,38 @@
+title: Keycloak brute-force login
+id: 8c4b7a10-2f4e-4b8a-9c31-6a4c1d2e0f01
+status: stable
+description: >
+  Detects more than 10 failed logins for the same username or from the same
+  source IP within 5 minutes against the Keycloak surf realms. Indicates
+  password brute-forcing or credential stuffing against VNB or SOC accounts.
+author: SURF Detection Team
+date: 2026/07/14
+references:
+  - https://attack.mitre.org/techniques/T1110/
+  - https://www.keycloak.org/docs/latest/server_admin/#password-guess-brute-force-attacks
+tags:
+  - attack.credential_access
+  - attack.t1110
+  - surf.threat.AV-01
+  - nis2.art.21.2.b
+level: high
+logsource:
+  product: keycloak
+  service: events
+detection:
+  selection:
+    event.action: LOGIN_ERROR
+    event.outcome: failure
+    keycloak.error: invalid_user_credentials
+  timeframe: 5m
+  condition: selection | count() by user.name > 10
+falsepositives:
+  - Load tests against non-production realms (filter by realm name)
+  - Users with broken password managers retrying rapidly
+owner: detection-team@surf
+surf.threat_id: AV-01
+surf.compliance:
+  - "NIS2 Art. 21(2)(b)"
+  - "IEC 62443-3-3 FR1.1"
+  - "KRITIS §8a BSIG"
+  - "ISO 27001 A.8.5"

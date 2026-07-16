@@ -1,0 +1,29 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:00Z",
+    "event.id": "r06-n-0",
+    "observer.product": "surf-engine",
+    "observer.service": "signing",
+    "event.action": "command_sign",
+    "event.outcome": "failure",
+    "host.name": "engine-01"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r06-n-1",
+    "observer.product": "surf-engine",
+    "observer.service": "signing",
+    "event.action": "command_sign",
+    "event.outcome": "success",
+    "host.name": "engine-01"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:02Z",
+    "event.id": "r06-n-2",
+    "observer.product": "surf-engine",
+    "observer.service": "signing",
+    "event.action": "command_sign",
+    "event.outcome": "success",
+    "host.name": "engine-01"
+  }
+]

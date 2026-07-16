@@ -1,0 +1,414 @@
+# SURF Security Companion — local/dev stack (Compose v2)
+# Production deployment: /deploy/helm/surf-companion
+name: surf-security-companion
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  # ---------------------------------------------------------- edge
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/certs:ro
+    # keycloak.local resolves to nginx so both the browser and the backend
+    # reach Keycloak over TLS (443) and nginx proxies /realms/ to keycloak:8080.
+    networks:
+      default:
+        aliases: [keycloak.local]
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "--spider", "https://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  # ---------------------------------------------------------- app
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the bundle by Vite; values interpolated from the root .env
+        VITE_OIDC_ISSUER_URL: ${VITE_OIDC_ISSUER_URL:-https://keycloak.local/realms/surf-security}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:-surf-companion-frontend}
+        VITE_API_BASE: ${VITE_API_BASE:-https://localhost/api}
+        VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    restart: unless-stopped
+    env_file: .env
+    read_only: true
+    user: "1001:1001"
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Trust the self-signed dev cert for outbound TLS (JWKS fetch goes to
+      # https://keycloak.local via nginx, which serves certs/fullchain.pem).
+      NODE_EXTRA_CA_CERTS: /certs/fullchain.pem
+    read_only: true
+    user: "1001:1001"
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./certs:/certs:ro
+      - ./secrets:/secrets:ro
+      - ./rules:/rules:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      sigma-compiler:
+        condition: service_completed_successfully
+    healthcheck:
+      # distroless image: node is at /nodejs/bin/node and not on PATH.
+      test: ["CMD", "/nodejs/bin/node", "/app/healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  # ---------------------------------------------------------- identity
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    restart: unless-stopped
+    # Run as root so Keycloak can write its H2 files into the root-owned
+    # keycloak-data named volume (dev-only embedded DB).
+    user: "0:0"
+    command: ["start-dev", "--import-realm", "--health-enabled=true", "--metrics-enabled=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-change-me}
+      KC_HOSTNAME: keycloak.local
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak-data:/opt/keycloak/data/h2
+    ports:
+      - "8443:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *default-logging
+
+  # ---------------------------------------------------------- data
+  postgres:
+    build:
+      context: ./deploy/postgres
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_DB:-surf_soc}
+      POSTGRES_USER: ${PG_USER:-soc_app}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-change-me}
+      # PGDATA lives in a subdir so the nested pg-logs mount at
+      # /var/lib/postgresql/data/log doesn't make initdb's target non-empty.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pgaudit"
+      - "-c"
+      - "pgaudit.log=write,ddl,role"
+      - "-c"
+      - "pgaudit.log_parameter=on"
+      - "-c"
+      - "log_destination=jsonlog"
+      - "-c"
+      - "logging_collector=on"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - pg-logs:/var/lib/postgresql/data/log
+      - ./backend/src/infrastructure/persistence/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  pgaudit-collector:
+    image: grafana/promtail:3.2.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/pgaudit-promtail.yml"]
+    volumes:
+      - ./observability/pgaudit-promtail.yml:/etc/promtail/pgaudit-promtail.yml:ro
+      - pg-logs:/pglogs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    logging: *default-logging
+
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    restart: unless-stopped
+    environment:
+      cluster.name: surf-siem
+      node.name: opensearch
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_PASSWORD:-Change-Me-2026!}
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      - ./certs:/usr/share/opensearch/config/certs:ro
+    networks:
+      default:
+        aliases: [opensearch.local]
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk -u admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD} https://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    logging: *default-logging
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.18.0
+    restart: unless-stopped
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-admin}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-Change-Me-2026!}
+      OPENSEARCH_SSL_VERIFICATIONMODE: none
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u $${OPENSEARCH_USERNAME}:$${OPENSEARCH_PASSWORD} http://localhost:5601/api/status | grep -qE '\"state\":\"(green|yellow)\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *default-logging
+
+  # ---------------------------------------------------------- SIEM
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.10.1
+    restart: unless-stopped
+    environment:
+      INDEXER_URL: https://opensearch:9200
+      INDEXER_USERNAME: ${OPENSEARCH_USERNAME:-admin}
+      INDEXER_PASSWORD: ${OPENSEARCH_PASSWORD:-Change-Me-2026!}
+      SSL_CERTIFICATE_AUTHORITIES: /etc/ssl/certs/surf/opensearch-ca.pem
+    volumes:
+      - wazuh-etc:/var/ossec/etc
+      - wazuh-logs:/var/ossec/logs
+      # Deliver compiled rules via Wazuh's /wazuh-config-mount mechanism, which
+      # copies into /var/ossec/etc/rules/surf AFTER config init. Mounting them
+      # directly under /var/ossec/etc makes that dir non-empty at startup, so
+      # the entrypoint skips restoring the default config (ossec.conf, ar.conf).
+      - compiled-rules:/wazuh-config-mount/etc/rules/surf:ro
+      - ./certs:/etc/ssl/certs/surf:ro
+    networks:
+      default:
+        aliases: [wazuh.local]
+    ports:
+      - "1514:1514"
+      - "1515:1515"
+      - "55000:55000"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      sigma-compiler:
+        condition: service_completed_successfully
+    healthcheck:
+      # The API root returns 401 (auth required) when healthy; that proves the
+      # daemon is listening. The unauthenticated body contains no 'Wazuh' string.
+      test: ["CMD-SHELL", "curl -sk -o /dev/null -w '%{http_code}' https://localhost:55000/ | grep -qE '^(200|401)$'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    logging: *default-logging
+
+  sigma-compiler:
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile.sigma
+    # Run as root to write into the root-owned compiled-rules named volume.
+    user: "0:0"
+    environment:
+      RULES_DIR: /rules
+      OUTPUT_DIR: /output
+    volumes:
+      - ./rules:/rules:ro
+      - compiled-rules:/output
+    logging: *default-logging
+
+  # ---------------------------------------------------------- WORM storage
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-surfminio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-surfminiosecret}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  setup-minio:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    entrypoint: ["/bin/sh", "/setup/setup-minio.sh"]
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-surfminio}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-surfminiosecret}
+      MINIO_BUCKET_AUDIT: ${MINIO_BUCKET_AUDIT:-surf-audit}
+      MINIO_BUCKET_HASHCHAIN: ${MINIO_BUCKET_HASHCHAIN:-surf-hashchain}
+      MINIO_OBJECT_LOCK_YEARS: ${MINIO_OBJECT_LOCK_YEARS:-1}
+    volumes:
+      - ./scripts/setup-minio.sh:/setup/setup-minio.sh:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+    logging: *default-logging
+
+  # ---------------------------------------------------------- observability
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol/config.yml:ro
+    networks:
+      default:
+        aliases: [otel-collector.local]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    # No healthcheck: the collector image is distroless (no shell/wget), so an
+    # in-container probe can't run. The health_check extension still serves on
+    # :13133 for external monitoring.
+    healthcheck:
+      disable: true
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:3.2.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - loki-data:/loki
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana-provisioning:/etc/grafana/provisioning:ro
+      - ./docs/grafana-soc-dashboard.json:/var/lib/grafana/dashboards/surf-soc.json:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+volumes:
+  keycloak-data:
+  pg-data:
+  pg-logs:
+  opensearch-data:
+  wazuh-etc:
+  wazuh-logs:
+  compiled-rules:
+  minio-data:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:

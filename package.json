@@ -1,0 +1,33 @@
+{
+  "name": "surf-security-companion",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "SURF Security Companion — KRITIS-grade SOC portal (SIEM, SOAR safe-mode, NIS2 reporting, cryptographic log integrity)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces",
+    "test:integration": "npm run test:integration -w backend",
+    "test:rules": "npm run test:rules -w backend",
+    "test:e2e": "playwright test",
+    "seed": "tsx scripts/seed.ts",
+    "reset-demo": "tsx scripts/reset-demo.ts",
+    "verify:hashchain": "tsx scripts/verify-hashchain.ts",
+    "rules:convert": "tsx scripts/convert-sigma.ts",
+    "rules:validate": "tsx scripts/convert-sigma.ts --validate-only",
+    "compliance:render": "tsx scripts/render-compliance.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

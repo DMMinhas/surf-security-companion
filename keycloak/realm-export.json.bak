@@ -1,0 +1,170 @@
+{
+  "realm": "surf-security",
+  "enabled": true,
+  "displayName": "SURF Security Companion",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 10,
+  "maxFailureWaitSeconds": 900,
+  "eventsEnabled": true,
+  "eventsListeners": ["jboss-logging"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "passwordPolicy": "length(14) and notUsername and passwordHistory(5)",
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "strictTransportSecurity": "max-age=63072000; includeSubDomains; preload"
+  },
+  "roles": {
+    "realm": [
+      { "name": "SOC_ANALYST", "description": "Security analyst — full alert/case/rule workflow, cross-tenant read" },
+      { "name": "DSO_OPERATOR", "description": "VNB operator — tenant-scoped alerts, cases, reports" },
+      { "name": "PLATFORM_ADMIN", "description": "Platform administration, playbook approval (four-eyes)" },
+      { "name": "AUDITOR", "description": "Read-only cross-tenant, audit & hash-chain verification" },
+      { "name": "EXECUTIVE_OBSERVER", "description": "Tenant-scoped read-only dashboards" }
+    ]
+  },
+  "requiredActions": [
+    { "alias": "webauthn-register", "name": "Webauthn Register", "providerId": "webauthn-register", "enabled": true, "defaultAction": false },
+    { "alias": "CONFIGURE_TOTP", "name": "Configure OTP", "providerId": "CONFIGURE_TOTP", "enabled": true, "defaultAction": true },
+    { "alias": "UPDATE_PASSWORD", "name": "Update Password", "providerId": "UPDATE_PASSWORD", "enabled": true, "defaultAction": true }
+  ],
+  "clients": [
+    {
+      "clientId": "surf-companion-frontend",
+      "name": "SURF Companion SPA",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "https://localhost",
+      "redirectUris": ["https://localhost/auth/callback", "https://localhost/auth/silent-renew.html", "http://localhost:5173/*"],
+      "webOrigins": ["https://localhost", "http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://localhost"
+      },
+      "defaultClientScopes": ["openid", "profile", "roles", "surf-tenant"],
+      "protocolMappers": [
+        {
+          "name": "audience-backend",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "surf-companion-backend",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "surf-companion-backend",
+      "name": "SURF Companion Backend",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "dev-only-backend-secret-change-me",
+      "attributes": {}
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "surf-tenant",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
+      "protocolMappers": [
+        {
+          "name": "surf_tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "surf_tenant_id",
+            "claim.name": "surf_tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "anna.analyst",
+      "enabled": true,
+      "email": "anna.analyst@surf-project.example",
+      "emailVerified": true,
+      "firstName": "Anna",
+      "lastName": "Analyst",
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["SOC_ANALYST"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "dirk.dso",
+      "enabled": true,
+      "email": "dirk.dso@vnb-saar.example",
+      "emailVerified": true,
+      "firstName": "Dirk",
+      "lastName": "DSO",
+      "attributes": { "surf_tenant_id": ["vnb-saar"] },
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["DSO_OPERATOR"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "petra.platform",
+      "enabled": true,
+      "email": "petra.platform@surf-project.example",
+      "emailVerified": true,
+      "firstName": "Petra",
+      "lastName": "Platform",
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["PLATFORM_ADMIN"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "axel.admin2",
+      "enabled": true,
+      "email": "axel.admin2@surf-project.example",
+      "emailVerified": true,
+      "firstName": "Axel",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["PLATFORM_ADMIN"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "auditor.alice",
+      "enabled": true,
+      "email": "alice.auditor@surf-project.example",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Auditor",
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["AUDITOR"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    },
+    {
+      "username": "emil.exec",
+      "enabled": true,
+      "email": "emil.exec@vnb-saar.example",
+      "emailVerified": true,
+      "firstName": "Emil",
+      "lastName": "Executive",
+      "attributes": { "surf_tenant_id": ["vnb-saar"] },
+      "credentials": [{ "type": "password", "value": "Surf-Demo-2026!", "temporary": false }],
+      "realmRoles": ["EXECUTIVE_OBSERVER"],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    }
+  ]
+}

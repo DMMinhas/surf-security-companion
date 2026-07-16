@@ -1,0 +1,19 @@
+# PodSecurity admission (PSP is removed in k8s 1.25+). Label the namespace so the
+# "restricted" Pod Security Standard is enforced — the deployments above already
+# satisfy it (non-root, read-only FS, dropped caps, seccomp RuntimeDefault).
+#
+# Apply this to the target namespace (kept here so the chart documents the intent;
+# rendered only when .Values.podSecurity.enforce is true):
+{{- if .Values.podSecurity }}
+{{- if .Values.podSecurity.enforce }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+{{- end }}
+{{- end }}

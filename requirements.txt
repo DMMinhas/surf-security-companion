@@ -1,0 +1,96 @@
+==============================================================================
+ SURF Security Companion — Development Machine Requirements
+==============================================================================
+
+NOTE: This is a Node.js / TypeScript monorepo, NOT a Python project.
+      There is no pip requirements file. The actual package dependencies are
+      declared in the package.json files and installed with `npm ci`
+      (the JavaScript equivalent of `pip install -r requirements.txt`).
+
+      This file lists the SYSTEM-LEVEL tools you must install first, plus the
+      exact commands to bring the stack up.
+
+------------------------------------------------------------------------------
+ 1. SYSTEM PREREQUISITES (install these on the host)
+------------------------------------------------------------------------------
+
+  Docker Engine            >= 27.x        (with the Compose v2 plugin)
+  Docker Compose v2        >= 2.x         `docker compose version`
+  Node.js                  22 LTS         only needed for local dev & scripts
+  npm                      >= 10          ships with Node 22
+  Git                      any recent
+
+  Optional:
+  mkcert                   latest         locally-trusted TLS certs (else the
+                                          bundled self-signed script is used)
+  openssl                                 used by scripts/gen-dev-certs.sh
+                                          (preinstalled on macOS/Linux; on
+                                          Windows it ships with Git Bash)
+
+  Linux hosts ONLY — raise the mmap limit for OpenSearch / Wazuh-indexer:
+      sudo sysctl -w vm.max_map_count=262144
+
+  Hardware guidance: the full stack (OpenSearch, Wazuh, Keycloak, Postgres,
+  MinIO, Grafana/Tempo/Loki/Prometheus, backend, frontend) is heavy.
+  Recommend >= 8 GB RAM free for Docker and ~10 GB free disk.
+
+------------------------------------------------------------------------------
+ 2. NODE PACKAGE DEPENDENCIES (installed via npm, not this file)
+------------------------------------------------------------------------------
+
+  Workspaces:   ./          (root — playwright, tsx, typescript)
+                ./backend   (Fastify 5, jose, zod, pino, opensearch, pg,
+                             minio, @noble/ed25519, ajv, docxtemplater, otel)
+                ./frontend  (React 19, Vite 6, TanStack, oidc-client-ts,
+                             zod, recharts, mermaid, tailwind)
+
+  Install everything (root + both workspaces) with:
+      npm ci            # reproducible install from package-lock.json
+      # or, if you have no lockfile yet:
+      npm install
+
+------------------------------------------------------------------------------
+ 3. RUN IT — full stack (recommended; login works end-to-end)
+------------------------------------------------------------------------------
+
+  cp .env.example .env            # then edit the change-me passwords
+  ./scripts/gen-dev-certs.sh      # self-signed TLS + hash-chain signing key
+  docker compose up -d --build    # first boot takes a few minutes
+  npm ci                          # install JS deps for the seed script
+  npm run seed                    # push demo events so all 15 rules fire
+
+  URLs after startup:
+    SOC Portal (SPA)        https://localhost
+    Backend API / OpenAPI   https://localhost/api/docs
+    Keycloak admin          https://localhost:8443/admin
+    OpenSearch Dashboards   https://localhost:5601
+    MinIO console           http://localhost:9001
+    Grafana                 http://localhost:3000
+    Prometheus              http://localhost:9090
+
+  Demo users (realm auto-imported), password: Surf-Demo-2026!
+    anna.analyst      SOC_ANALYST          (all tenants)
+    dirk.dso          DSO_OPERATOR         (tenant vnb-saar)
+    petra.platform    PLATFORM_ADMIN
+    axel.admin2       PLATFORM_ADMIN       (2nd approver for four-eyes)
+    auditor.alice     AUDITOR              (read-only, cross-tenant)
+    emil.exec         EXECUTIVE_OBSERVER   (tenant vnb-saar)
+  First login forces WebAuthn/OTP MFA enrolment.
+
+------------------------------------------------------------------------------
+ 4. RUN IT — frontend UI only (no backend/Keycloak; login button won't work)
+------------------------------------------------------------------------------
+
+  npm ci
+  npm run dev -w frontend         # Vite dev server at http://localhost:5173
+
+------------------------------------------------------------------------------
+ 5. TESTS
+------------------------------------------------------------------------------
+
+  npm run test              # Vitest unit tests (backend + frontend)
+  npm run test:rules        # Sigma rule fixtures (15 rules)
+  npm run test:integration  # Testcontainers (needs Docker)
+  npm run test:e2e          # Playwright (needs the compose stack up + seeded)
+
+==============================================================================

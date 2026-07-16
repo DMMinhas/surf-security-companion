@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "surf-companion.fullname" . }}-backend
+  labels:
+    {{- include "surf-companion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.replicaCount.backend }}
+  selector:
+    matchLabels:
+      {{- include "surf-companion.backendSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "surf-companion.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: {{ .Values.backend.port | quote }}
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        seccompProfile:
+          {{- toYaml .Values.securityContext.seccompProfile | nindent 10 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.image.registry }}/{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "surf-companion.fullname" . }}-config
+            {{- if .Values.externalSecrets.enabled }}
+            - secretRef:
+                name: {{ include "surf-companion.fullname" . }}-secrets
+            {{- end }}
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            capabilities:
+              {{- toYaml .Values.securityContext.capabilities | nindent 14 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: rules
+              mountPath: /rules
+              readOnly: true
+          livenessProbe:
+            httpGet: { path: /health, port: {{ .Values.backend.port }} }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /ready, port: {{ .Values.backend.port }} }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: rules
+          configMap:
+            name: {{ include "surf-companion.fullname" . }}-rules
+            optional: true

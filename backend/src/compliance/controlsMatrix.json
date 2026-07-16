@@ -1,0 +1,29 @@
+{
+  "$comment": "Source of truth for COMPLIANCE.md — rendered by scripts/render-compliance.ts",
+  "generated": "2026-07-14",
+  "controls": [
+    { "id": "R-01", "title": "Keycloak brute-force login", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.1", "kritis": "§8a BSIG", "iso27001": "A.8.5" },
+    { "id": "R-02", "title": "Impossible-travel login for VNB user", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.7", "kritis": "§8a BSIG", "iso27001": "A.8.15" },
+    { "id": "R-03", "title": "Successful login after MFA prompt bombing", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.7", "kritis": "§8a BSIG", "iso27001": "A.8.5" },
+    { "id": "R-04", "title": "Cross-tenant query", "nis2": "Art. 21(2)(h)", "iec62443": "FR5.1", "kritis": "§8a BSIG", "iso27001": "A.8.3" },
+    { "id": "R-05", "title": "JWT signature validation failure spike", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.5", "kritis": "§8a BSIG", "iso27001": "A.8.24" },
+    { "id": "R-06", "title": "Command signing service failure spike", "nis2": "Art. 21(2)(e)", "iec62443": "FR3.1", "kritis": "§8a BSIG", "iso27001": "A.8.24" },
+    { "id": "R-07", "title": "Unsigned command received at MQTT broker", "nis2": "Art. 21(2)(h)", "iec62443": "FR3.1", "kritis": "§8a BSIG", "iso27001": "A.8.16" },
+    { "id": "R-08", "title": "§14a mass-curtailment rate anomaly", "nis2": "Art. 21(2)(e)", "iec62443": "FR3.8", "kritis": "§8a BSIG", "iso27001": "A.8.16" },
+    { "id": "R-09", "title": "Safety-setpoint override attempt", "nis2": "Art. 21(2)(e)", "iec62443": "FR3.5", "kritis": "§8a BSIG", "iso27001": "A.8.16" },
+    { "id": "R-10", "title": "EMS firmware version rollback", "nis2": "Art. 21(2)(e)", "iec62443": "FR3.4", "kritis": "§8a BSIG", "iso27001": "A.8.8" },
+    { "id": "R-11", "title": "Repeated schedule delivery failures to EMS", "nis2": "Art. 21(2)(c)", "iec62443": "FR7.1", "kritis": "§8a BSIG", "iso27001": "A.8.14" },
+    { "id": "R-12", "title": "Privileged role grant in Keycloak admin", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.3", "kritis": "§8a BSIG", "iso27001": "A.8.2" },
+    { "id": "R-13", "title": "New service account outside change window", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.3", "kritis": "§8a BSIG", "iso27001": "A.8.2" },
+    { "id": "R-14", "title": "Kubernetes exec into a production pod", "nis2": "Art. 21(2)(e)", "iec62443": "FR2.1", "kritis": "§8a BSIG", "iso27001": "A.8.9" },
+    { "id": "R-15", "title": "DB access from IP outside allow-list", "nis2": "Art. 21(2)(b)", "iec62443": "FR1.1", "kritis": "§8a BSIG", "iso27001": "A.8.20" },
+    { "id": "P-01", "title": "OIDC + PKCE + WebAuthn/OTP MFA", "nis2": "Art. 21(2)(j)", "iec62443": "FR1.1/FR1.7", "kritis": "§8a BSIG", "iso27001": "A.8.5" },
+    { "id": "P-02", "title": "Tenant-scoped RBAC (surf_tenant_id)", "nis2": "Art. 21(2)(i)", "iec62443": "FR2.1", "kritis": "§8a BSIG", "iso27001": "A.8.3" },
+    { "id": "P-03", "title": "Hourly signed Merkle rollups + WORM", "nis2": "Art. 21(2)(h)", "iec62443": "FR3.4", "kritis": "§8a BSIG", "iso27001": "A.8.15" },
+    { "id": "P-04", "title": "NIS2 24h/72h/1m report generator", "nis2": "Art. 23", "iec62443": "—", "kritis": "§8b BSIG", "iso27001": "A.5.24" },
+    { "id": "P-05", "title": "SOAR safe-mode (dry-run, step-up, four-eyes)", "nis2": "Art. 21(2)(c)", "iec62443": "FR2.1", "kritis": "§8a BSIG", "iso27001": "A.5.26" },
+    { "id": "P-06", "title": "Append-only hash-chained audit_actions", "nis2": "Art. 21(2)(h)", "iec62443": "FR3.4", "kritis": "§8a BSIG", "iso27001": "A.8.15" },
+    { "id": "P-07", "title": "TLS 1.3 + HSTS + CSP edge hardening", "nis2": "Art. 21(2)(h)", "iec62443": "FR4.1", "kritis": "§8a BSIG", "iso27001": "A.8.24" },
+    { "id": "P-08", "title": "GDPR Art. 15/17 data-subject workflows", "nis2": "—", "iec62443": "—", "kritis": "—", "iso27001": "A.5.34" }
+  ]
+}

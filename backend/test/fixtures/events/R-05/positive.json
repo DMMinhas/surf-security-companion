@@ -1,0 +1,222 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:00Z",
+    "event.id": "r05-p-0",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r05-p-1",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:02Z",
+    "event.id": "r05-p-2",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:03Z",
+    "event.id": "r05-p-3",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:04Z",
+    "event.id": "r05-p-4",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:05Z",
+    "event.id": "r05-p-5",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:06Z",
+    "event.id": "r05-p-6",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:07Z",
+    "event.id": "r05-p-7",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:08Z",
+    "event.id": "r05-p-8",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:09Z",
+    "event.id": "r05-p-9",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:10Z",
+    "event.id": "r05-p-10",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:11Z",
+    "event.id": "r05-p-11",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:12Z",
+    "event.id": "r05-p-12",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:13Z",
+    "event.id": "r05-p-13",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:14Z",
+    "event.id": "r05-p-14",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:15Z",
+    "event.id": "r05-p-15",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:16Z",
+    "event.id": "r05-p-16",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:17Z",
+    "event.id": "r05-p-17",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:18Z",
+    "event.id": "r05-p-18",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:19Z",
+    "event.id": "r05-p-19",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:20Z",
+    "event.id": "r05-p-20",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:21Z",
+    "event.id": "r05-p-21",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  }
+]

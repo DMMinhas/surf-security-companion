@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: surf-soc
+    orgId: 1
+    folder: SURF SOC
+    type: file
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards

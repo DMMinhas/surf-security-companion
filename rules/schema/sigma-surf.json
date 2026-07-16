@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://surf-project.example/schemas/sigma-surf.json",
+  "title": "SURF Sigma rule (Sigma core + surf.* extension)",
+  "type": "object",
+  "required": [
+    "title",
+    "id",
+    "description",
+    "author",
+    "date",
+    "references",
+    "level",
+    "tags",
+    "logsource",
+    "detection",
+    "falsepositives",
+    "owner",
+    "surf.compliance"
+  ],
+  "properties": {
+    "title": { "type": "string", "minLength": 5, "maxLength": 120 },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["stable", "test", "experimental", "deprecated", "unsupported"]
+    },
+    "description": { "type": "string", "minLength": 20 },
+    "author": { "type": "string" },
+    "date": { "type": "string", "pattern": "^\\d{4}/\\d{2}/\\d{2}$" },
+    "modified": { "type": "string", "pattern": "^\\d{4}/\\d{2}/\\d{2}$" },
+    "references": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "minItems": 1
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "contains": { "pattern": "^attack\\." }
+    },
+    "level": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "informational"]
+    },
+    "logsource": {
+      "type": "object",
+      "properties": {
+        "product": { "type": "string" },
+        "service": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "anyOf": [
+        { "required": ["product"] },
+        { "required": ["category"] }
+      ],
+      "additionalProperties": false
+    },
+    "detection": {
+      "type": "object",
+      "required": ["condition"],
+      "properties": {
+        "condition": { "type": "string" },
+        "timeframe": { "type": "string", "pattern": "^\\d+[smhd]$" }
+      },
+      "additionalProperties": true
+    },
+    "falsepositives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "owner": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$", "description": "Owning team contact (email or team handle)" },
+    "surf.threat_id": {
+      "type": "string",
+      "pattern": "^AV-\\d{2}$",
+      "description": "Reference to the SURF threat-model attack vector"
+    },
+    "surf.compliance": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "NIS2 / IEC 62443 / KRITIS / ISO 27001 control references"
+    }
+  },
+  "additionalProperties": false
+}

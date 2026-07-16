@@ -1,0 +1,12 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r10-p-1",
+    "observer.product": "wazuh",
+    "observer.service": "syscollector",
+    "event.action": "firmware_inventory",
+    "surf.enrichment.firmware_downgrade": true,
+    "surf.ems.id": "ems-1",
+    "host.name": "ems-1"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:00Z",
+    "event.id": "r05-n-0",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r05-n-1",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:02Z",
+    "event.id": "r05-n-2",
+    "observer.product": "api-gateway",
+    "observer.service": "access",
+    "event.action": "jwt_verification",
+    "event.outcome": "failure",
+    "error.type": "signature_invalid",
+    "source.ip": "203.0.113.99"
+  }
+]

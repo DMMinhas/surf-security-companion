@@ -1,0 +1,12 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r09-p-1",
+    "observer.product": "surf-engine",
+    "observer.service": "validation",
+    "event.action": "setpoint_validation",
+    "surf.command.safety_envelope_violation": true,
+    "surf.ems.id": "ems-1",
+    "host.name": "engine-01"
+  }
+]

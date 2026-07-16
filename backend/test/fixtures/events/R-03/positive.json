@@ -1,0 +1,71 @@
+[
+  {
+    "@timestamp": "2026-07-14T10:00:00Z",
+    "event.id": "r03-p-0",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:01Z",
+    "event.id": "r03-p-1",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:02Z",
+    "event.id": "r03-p-2",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:03Z",
+    "event.id": "r03-p-3",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:04Z",
+    "event.id": "r03-p-4",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:05Z",
+    "event.id": "r03-p-5",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN_ERROR",
+    "keycloak.error": "invalid_authentication",
+    "keycloak.credential_type": "otp",
+    "user.name": "anna.analyst"
+  },
+  {
+    "@timestamp": "2026-07-14T10:00:59Z",
+    "event.id": "r03-p-s",
+    "observer.product": "keycloak",
+    "observer.service": "events",
+    "event.action": "LOGIN",
+    "event.outcome": "success",
+    "user.name": "anna.analyst"
+  }
+]
