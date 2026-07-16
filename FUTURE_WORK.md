@@ -60,9 +60,24 @@ fallback used by e2e.
 `FileEd25519Signer` reads a hex private key from disk (`HASHCHAIN_SIGNING_KEY_PATH`). This is
 acceptable for dev/MVP only.
 
-**Action:** implement an HSM/PKCS#11 (or Vault Transit) `Signer` adapter and bind it in
-`main.ts` for production, so the private key never leaves the HSM. Migration path is documented
-in [`docs/SECRETS.md`](docs/SECRETS.md).
+**Status (2026-07-16):** a production `Signer` is now shipped —
+[`VaultTransitSigner`](backend/src/infrastructure/integrations/vaultTransitSigner.ts) keeps the
+Ed25519 key inside HashiCorp Vault's Transit engine (the backend only asks Vault to sign; the
+private key never leaves Vault). Selected via `HASHCHAIN_SIGNER=vault`
+([`config.ts`](backend/src/infrastructure/config.ts) validates the Vault env; bound in
+[`main.ts`](backend/src/main.ts)). Verification is a **local** public-key operation, so an
+external auditor verifies tamper-evidence with the published public key alone — no Vault access
+or signing token. The ledger `sig` format (raw Ed25519 hex) is unchanged, so soft-key rollups
+stay verifiable after cut-over. Covered by
+[`vaultTransitSigner.test.ts`](backend/test/unit/vaultTransitSigner.test.ts) (5 tests); env
+contract, operator setup, and per-role Vault policies are in
+[`docs/SECRETS.md`](docs/SECRETS.md).
+
+**Residual:** the default (`HASHCHAIN_SIGNER=file`) is still the soft key, so production must set
+`HASHCHAIN_SIGNER=vault` (or supply an HSM/PKCS#11 adapter if a hardware module is mandated). The
+adapter caches one public-key version per process; verifying entries across a Transit key
+rotation needs multi-version pubkey resolution (not yet implemented — restart picks up the
+latest, and historical roots verify against archived public keys).
 
 ## 6. Correlation scheduler vs. Wazuh — shared roster, two evaluators
 
@@ -71,10 +86,34 @@ the same Sigma source, but they are **separate evaluators**. The portal evaluato
 deliberate subset of the Sigma condition grammar (documented in
 [`docs/RULE_AUTHORING.md`](docs/RULE_AUTHORING.md)).
 
-**Action:** any rule using a construct beyond that subset must extend
-`backend/src/correlation/evaluator.ts` **with fixtures**, and the two evaluators should be
-periodically reconciled (a rule that fires in Wazuh but not the portal, or vice-versa, is a
-detection gap). Consider a conformance test that diffs the two on the seed data.
+**Status (2026-07-16):** a conformance gate now diffs the two evaluators —
+[`backend/test/rules/conformance.test.ts`](backend/test/rules/conformance.test.ts) compiles every
+rule with the real `convert-sigma` converter and asserts, per rule, that the portal and Wazuh
+verdicts agree. **All 15 rules are now conformant** — the divergence map is empty.
+
+**All four structural gaps closed 2026-07-16:**
+- **R-04 / R-08 / R-13** — `filter_*` negations were dropped at compile time. The converter now
+  emits single-field `not filter_x` selections as Wazuh `negate="yes"` fields, so the exclusion
+  runs at the sensor; their negative fixtures (admin cross-tenant / emergency-declared /
+  in-change-window) prove Wazuh now suppresses them. A *multi-field* filter is
+  `NOT(f1 and f2) = (not f1) or (not f2)`, inexpressible in one Wazuh rule — those (none in the
+  current roster) stay portal-enforced.
+- **R-11** — `>=` boundary off-by-one. The converter emitted `frequency = threshold+1` for both
+  `>` and `>=`; it now emits `N` for `>= N` and `N+1` for `> N`. Boundary test: both fire at 10,
+  both silent at 9.
+- **R-03** — the `(sel_a | count()...) and sel_b` conjunction was reduced to the frequency of
+  sel_a alone. The converter now emits a **composite**: a silent (`level="0"`) frequency
+  precondition on sel_a plus a correlated rule triggered by sel_b via `<if_matched_sid>`. Tests
+  pin both directions (reject-burst alone stays silent; burst + success fires).
+
+If the compiler changes, the pinned assertions break. The gate runs in CI via
+`npm run test -w backend` (it covers `test/unit` **and** `test/rules`).
+
+**Residual (detection quality, not a conformance gap):** R-03's conjunction is *cross-entity* on
+both sides — the portal fires on any success in the window, and the composite mirrors that (no
+`<same_field>` on the correlated rule). Tightening both to same-`user.name` (an attacker's own
+success after their own MFA burst) would be a stricter, better detection; do it in lockstep so the
+two evaluators stay conformant.
 
 ## 7. Frontend bundle size
 

@@ -6,6 +6,8 @@
  */
 import { Client } from '@opensearch-project/opensearch';
 import 'dotenv/config';
+import { Enricher } from '../backend/src/correlation/enrichment.js';
+import { DefaultReferenceData, DEMO_REFERENCE_CONFIG } from '../backend/src/correlation/enrichmentReferenceData.js';
 
 const client = new Client({
   node: process.env['OPENSEARCH_URL'] ?? 'https://localhost:9200',
@@ -50,14 +52,23 @@ for (let i = 0; i < 12; i += 1) {
   );
 }
 
-// R-02: impossible travel (enriched flag)
+// R-02: impossible travel — TWO real successful logins the enricher pairs
+// (Frankfurt → Singapore, 8 s apart). No baked flag; the engine computes
+// surf.enrichment.impossible_travel from the geo distance and time gap.
 events.push(
-  base('keycloak', 'events', 90, {
+  base('keycloak', 'events', 100, {
     'event.action': 'LOGIN',
     'event.outcome': 'success',
-    'surf.enrichment.impossible_travel': true,
     'user.name': 'dirk.dso',
     'source.ip': '198.51.100.7',
+  }),
+);
+events.push(
+  base('keycloak', 'events', 92, {
+    'event.action': 'LOGIN',
+    'event.outcome': 'success',
+    'user.name': 'dirk.dso',
+    'source.ip': '203.0.113.5',
   }),
 );
 
@@ -82,11 +93,12 @@ events.push(
   }),
 );
 
-// R-04: cross-tenant query mismatch
+// R-04: cross-tenant query — actor's home tenant (vnb-saar) ≠ the queried
+// tenant (vnb-pfalz). surf.enrichment.cross_tenant_mismatch is computed.
 events.push(
   base('postgres', 'pgaudit', 80, {
     'event.action': 'query',
-    'surf.enrichment.cross_tenant_mismatch': true,
+    'surf.query.tenant_id': 'vnb-pfalz',
     'user.name': 'app_vnb_saar',
     'user.roles': ['DSO_OPERATOR'],
     'source.ip': '10.0.4.12',
@@ -152,11 +164,11 @@ events.push(
   }),
 );
 
-// R-10: firmware downgrade
+// R-10: firmware downgrade — reported 2.1.0 is below the 2.4.0 inventory
+// baseline; the engine computes surf.enrichment.firmware_downgrade via semver.
 events.push(
   base('wazuh', 'syscollector', 60, {
     'event.action': 'firmware_inventory',
-    'surf.enrichment.firmware_downgrade': true,
     'surf.ems.id': 'ems-0815',
     'surf.ems.firmware_version': '2.1.0',
     'host.name': 'ems-0815',
@@ -187,13 +199,13 @@ events.push(
   }),
 );
 
-// R-13: service account outside change window
+// R-13: service account created outside any declared change window — the
+// engine computes surf.enrichment.in_change_window=false from the calendar.
 events.push(
   base('keycloak', 'admin-events', 50, {
     'event.action': 'CREATE',
     'keycloak.resource_type': 'CLIENT',
     'keycloak.service_account_enabled': true,
-    'surf.enrichment.in_change_window': false,
     'user.name': 'petra.platform',
     'source.ip': '10.0.2.5',
   }),
@@ -211,11 +223,11 @@ events.push(
   }),
 );
 
-// R-15: DB access from off-allowlist IP
+// R-15: DB access from an IP outside the allow-list — the engine computes
+// surf.enrichment.ip_allowlisted=false (198.51.100.201 ∉ 10/8, 192.168/16).
 events.push(
   base('postgres', 'pgaudit', 40, {
     'event.action': 'connection_authorized',
-    'surf.enrichment.ip_allowlisted': false,
     'user.name': 'soc_app',
     'source.ip': '198.51.100.201',
   }),
@@ -238,15 +250,29 @@ for (let i = 0; i < 20; i += 1) {
 }
 
 async function main(): Promise<void> {
+  // Compute surf.enrichment.* exactly as the backend ingest path does: process
+  // oldest-first, enrich each event against prior state, then let it contribute
+  // its own (so the two R-02 logins pair, firmware baseline holds, etc.).
+  const refs = new DefaultReferenceData(DEMO_REFERENCE_CONFIG);
+  const enricher = new Enricher(refs);
+  const ordered = [...events].sort(
+    (a, b) => Date.parse(String(a['@timestamp'])) - Date.parse(String(b['@timestamp'])),
+  );
+  const enriched = ordered.map((doc) => {
+    const out = enricher.enrich(doc);
+    refs.observe(doc);
+    return out;
+  });
+
   const index = `surf-events-${new Date().toISOString().slice(0, 10).replaceAll('-', '.')}`;
-  const operations = events.flatMap((doc) => [{ index: { _index: index, _id: String(doc['event.id']) } }, doc]);
+  const operations = enriched.flatMap((doc) => [{ index: { _index: index, _id: String(doc['event.id']) } }, doc]);
   const response = await client.bulk({ body: operations, refresh: true });
   if (response.body.errors) {
     console.error('bulk ingest had item errors');
     process.exitCode = 1;
     return;
   }
-  console.log(`seeded ${events.length} events into ${index} — all 15 rules should fire within ~60s`);
+  console.log(`seeded ${enriched.length} events into ${index} — enrichment computed at ingest, all 15 rules should fire within ~60s`);
 }
 
 main().catch((err) => {
