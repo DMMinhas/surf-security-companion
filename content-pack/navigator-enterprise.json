@@ -1,0 +1,85 @@
+{
+  "name": "SURF KRITIS Detection Pack 2026.07.1 (Enterprise)",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.9.1",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "MITRE ATT&CK coverage for SURF KRITIS Detection Pack 2026.07.1 — generated from /rules tags.",
+  "techniques": [
+    {
+      "techniqueID": "T1078",
+      "score": 2,
+      "comment": "R-02: Impossible-travel login for VNB user\nR-15: DB access from IP outside allow-list",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1078.004",
+      "score": 1,
+      "comment": "R-05: JWT signature validation failure spike",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1098.003",
+      "score": 1,
+      "comment": "R-12: Privileged role grant in Keycloak admin",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1110",
+      "score": 1,
+      "comment": "R-01: Keycloak brute-force login",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1136.003",
+      "score": 1,
+      "comment": "R-13: New service account outside change window",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1213",
+      "score": 1,
+      "comment": "R-04: Cross-tenant query",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1565",
+      "score": 1,
+      "comment": "R-06: Command signing service failure spike",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1609",
+      "score": 1,
+      "comment": "R-14: Kubernetes exec into a production pod",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T1621",
+      "score": 1,
+      "comment": "R-03: Successful login after MFA prompt bombing",
+      "enabled": true,
+      "color": ""
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#e8f5e9",
+      "#1b5e20"
+    ],
+    "minValue": 0,
+    "maxValue": 2
+  },
+  "legendItems": [],
+  "hideDisabled": true
+}

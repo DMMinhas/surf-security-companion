@@ -1,0 +1,159 @@
+{
+  "enterprise": [
+    {
+      "techniqueID": "T1078",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-02",
+        "R-15"
+      ]
+    },
+    {
+      "techniqueID": "T1078.004",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-05"
+      ]
+    },
+    {
+      "techniqueID": "T1098.003",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-12"
+      ]
+    },
+    {
+      "techniqueID": "T1110",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-01"
+      ]
+    },
+    {
+      "techniqueID": "T1136.003",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-13"
+      ]
+    },
+    {
+      "techniqueID": "T1213",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-04"
+      ]
+    },
+    {
+      "techniqueID": "T1565",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-06"
+      ]
+    },
+    {
+      "techniqueID": "T1609",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-14"
+      ]
+    },
+    {
+      "techniqueID": "T1621",
+      "domain": "enterprise-attack",
+      "rules": [
+        "R-03"
+      ]
+    }
+  ],
+  "ics": [
+    {
+      "techniqueID": "T0813",
+      "domain": "ics-attack",
+      "rules": [
+        "R-08"
+      ]
+    },
+    {
+      "techniqueID": "T0815",
+      "domain": "ics-attack",
+      "rules": [
+        "R-11"
+      ]
+    },
+    {
+      "techniqueID": "T0836",
+      "domain": "ics-attack",
+      "rules": [
+        "R-07",
+        "R-09"
+      ]
+    },
+    {
+      "techniqueID": "T0857",
+      "domain": "ics-attack",
+      "rules": [
+        "R-10"
+      ]
+    }
+  ],
+  "tactics": [
+    {
+      "tactic": "collection",
+      "rules": [
+        "R-04"
+      ]
+    },
+    {
+      "tactic": "credential_access",
+      "rules": [
+        "R-01",
+        "R-03"
+      ]
+    },
+    {
+      "tactic": "execution",
+      "rules": [
+        "R-14"
+      ]
+    },
+    {
+      "tactic": "impact",
+      "rules": [
+        "R-06"
+      ]
+    },
+    {
+      "tactic": "initial_access",
+      "rules": [
+        "R-02",
+        "R-05"
+      ]
+    },
+    {
+      "tactic": "lateral_movement",
+      "rules": [
+        "R-15"
+      ]
+    },
+    {
+      "tactic": "persistence",
+      "rules": [
+        "R-12",
+        "R-13"
+      ]
+    }
+  ],
+  "tacticUnmapped": [
+    "R-07",
+    "R-08",
+    "R-09",
+    "R-10",
+    "R-11"
+  ],
+  "totals": {
+    "rules": 15,
+    "enterpriseTechniques": 9,
+    "icsTechniques": 4,
+    "tactics": 7
+  }
+}

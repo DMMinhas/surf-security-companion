@@ -1,0 +1,50 @@
+{
+  "name": "SURF KRITIS Detection Pack 2026.07.1 (ICS)",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.9.1",
+    "layer": "4.5"
+  },
+  "domain": "ics-attack",
+  "description": "MITRE ATT&CK coverage for SURF KRITIS Detection Pack 2026.07.1 — generated from /rules tags.",
+  "techniques": [
+    {
+      "techniqueID": "T0813",
+      "score": 1,
+      "comment": "R-08: §14a mass-curtailment rate anomaly",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T0815",
+      "score": 1,
+      "comment": "R-11: Repeated schedule delivery failures to EMS",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T0836",
+      "score": 2,
+      "comment": "R-07: Unsigned command received at MQTT broker\nR-09: Safety-setpoint override attempt",
+      "enabled": true,
+      "color": ""
+    },
+    {
+      "techniqueID": "T0857",
+      "score": 1,
+      "comment": "R-10: EMS firmware version rollback",
+      "enabled": true,
+      "color": ""
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#e8f5e9",
+      "#1b5e20"
+    ],
+    "minValue": 0,
+    "maxValue": 2
+  },
+  "legendItems": [],
+  "hideDisabled": true
+}

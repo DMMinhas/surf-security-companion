@@ -12,6 +12,12 @@ Every rule must include (enforced by [`rules/schema/sigma-surf.json`](../rules/s
 `logsource`, `detection` (with `condition`), `falsepositives` (≥1), `owner`, `surf.compliance`
 (≥1). `surf.threat_id` (`AV-NN`) is recommended.
 
+**ATT&CK tagging feeds the content pack.** Use `attack.t1110` (enterprise), `attack.ics.T0813`
+(ICS), and an `attack.<tactic>` tag (e.g. `attack.credential_access`). The
+[content pack](CONTENT_PACK.md) derives its coverage map and Navigator layers from these; a rule
+with a technique but no tactic tag shows up as a content gap. Changing tags means re-running
+`npm run pack:build` (CI's `pack:check` enforces it).
+
 ## Supported detection grammar
 
 The evaluator implements a deliberate subset of Sigma (everything the 15 rules need). Adding
