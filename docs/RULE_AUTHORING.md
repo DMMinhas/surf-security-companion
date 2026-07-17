@@ -37,8 +37,10 @@ list (contains-any). `timeframe: <n>[smhd]` bounds aggregated conditions.
 
 ## Wazuh rule id block
 
-Compiled rules occupy Wazuh ids **100100–100199** (reserved for SURF). `convert-sigma.ts`
-assigns them in file order; keep the `R-NN` prefixes contiguous.
+Primary compiled rules take ids **100100 + file index** (reserved SURF range `100100–100899`);
+`convert-sigma.ts` assigns them in file order, so keep the `R-NN` prefixes contiguous. A
+conjunctive rule also emits a **composite** rule at `id + 900` (the `101000+` band) so it can
+never collide with a primary. The converter fails closed if any id is duplicated.
 
 ## Workflow
 
