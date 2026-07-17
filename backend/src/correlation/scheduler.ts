@@ -3,7 +3,18 @@ import type { SigmaRule } from '../domain/entities/sigmaRule.js';
 import { attackTechniques, severityOf } from '../domain/entities/sigmaRule.js';
 import { alertFingerprint, type Alert, type AlertSource } from '../domain/entities/alert.js';
 import { RuleEvaluator, getField } from './evaluator.js';
+import type { Enricher } from './enrichment.js';
 import type { Logger } from 'pino';
+
+/**
+ * Enrichment applied to the event window before evaluation. `enricher` computes
+ * the surf.enrichment.* flags (idempotently); `refs.observe` feeds the stateful
+ * reference data (login/firmware history) from the same stream.
+ */
+export interface SchedulerEnrichment {
+  enricher: Enricher;
+  refs: { observe(event: Record<string, unknown>): void };
+}
 
 export interface SchedulerConfig {
   /** Evaluation cadence. Spec: every 60 s. */
@@ -28,6 +39,8 @@ export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
 export class CorrelationScheduler {
   private timer: NodeJS.Timeout | undefined;
   private running = false;
+  /** event.id → observed-at epoch ms, so each event feeds history exactly once across overlapping windows. */
+  private readonly observed = new Map<string, number>();
 
   constructor(
     private readonly rules: () => SigmaRule[],
@@ -38,6 +51,7 @@ export class CorrelationScheduler {
     private readonly config: SchedulerConfig,
     private readonly log: Logger,
     private readonly onRuleFired?: (ruleId: string, count: number) => void,
+    private readonly enrichment?: SchedulerEnrichment,
   ) {}
 
   start(): void {
@@ -63,11 +77,12 @@ export class CorrelationScheduler {
       const since = new Date(now.getTime() - this.config.windowSeconds * 1000).toISOString();
       const window = await this.events.searchWindow(since, until);
       if (window.length === 0) return 0;
+      const events = this.enrichWindow(window, now);
 
       let fired = 0;
       for (const rule of this.rules()) {
         if (!(await this.ruleState.isEnabled(rule.id))) continue;
-        const scoped = this.filterByLogsource(rule, window);
+        const scoped = this.filterByLogsource(rule, events);
         if (scoped.length === 0) continue;
         try {
           const result = this.evaluator.evaluate(rule, scoped);
@@ -82,6 +97,47 @@ export class CorrelationScheduler {
     } finally {
       this.running = false;
     }
+  }
+
+  /**
+   * Enriches the window in-memory before evaluation, so rules that match
+   * surf.enrichment.* fire on whatever landed in OpenSearch — regardless of
+   * which writer produced it (shippers write raw). Events are processed oldest
+   * first so history builds in order, each event is observed once across
+   * overlapping windows, and enrich() leaves already-enriched events untouched.
+   */
+  private enrichWindow(
+    window: Array<Record<string, unknown>>,
+    now: Date,
+  ): Array<Record<string, unknown>> {
+    const enr = this.enrichment;
+    if (!enr) return window;
+
+    // Keep the observed-id map bounded: an event only reappears for as long as
+    // it stays inside the rolling window, so drop ids older than two windows.
+    const horizon = now.getTime() - this.config.windowSeconds * 2000;
+    for (const [id, ts] of this.observed) {
+      if (ts < horizon) this.observed.delete(id);
+    }
+
+    const tsOf = (e: Record<string, unknown>): number => Date.parse(String(getField(e, '@timestamp') ?? ''));
+    const idOf = (e: Record<string, unknown>): string | undefined => {
+      const v = getField(e, 'event.id') ?? getField(e, '_id');
+      return v === undefined ? undefined : String(v);
+    };
+
+    return [...window]
+      .sort((a, b) => (tsOf(a) || 0) - (tsOf(b) || 0))
+      .map((e) => {
+        const enriched = enr.enricher.enrich(e); // idempotent; computes against history-so-far
+        const id = idOf(e);
+        if (id !== undefined && !this.observed.has(id)) {
+          enr.refs.observe(e);
+          const t = tsOf(e);
+          this.observed.set(id, Number.isNaN(t) ? now.getTime() : t);
+        }
+        return enriched;
+      });
   }
 
   private filterByLogsource(rule: SigmaRule, window: Array<Record<string, unknown>>): Array<Record<string, unknown>> {

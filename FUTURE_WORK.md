@@ -74,10 +74,12 @@ contract, operator setup, and per-role Vault policies are in
 [`docs/SECRETS.md`](docs/SECRETS.md).
 
 **Residual:** the default (`HASHCHAIN_SIGNER=file`) is still the soft key, so production must set
-`HASHCHAIN_SIGNER=vault` (or supply an HSM/PKCS#11 adapter if a hardware module is mandated). The
-adapter caches one public-key version per process; verifying entries across a Transit key
-rotation needs multi-version pubkey resolution (not yet implemented — restart picks up the
-latest, and historical roots verify against archived public keys).
+`HASHCHAIN_SIGNER=vault` (or supply an HSM/PKCS#11 adapter if a hardware module is mandated).
+Transit key rotation is handled: `verify()` checks a signature against **every** non-archived key
+version's public key, so historical rollups stay verifiable after a rotate (covered by
+`vaultTransitSigner.test.ts`). If an old version is archived/deleted in Vault below
+`min_decryption_version`, its rollups can only be verified against a separately-published
+public key.
 
 ## 6. Correlation scheduler vs. Wazuh — shared roster, two evaluators
 
@@ -141,5 +143,13 @@ promtail collector is wired in compose.
 
 **Action:** stand up the remaining source-specific shippers/decoders and confirm each maps to
 the normalisation schema in [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md). The `surf.enrichment.*`
-booleans (impossible-travel, cross-tenant, firmware-downgrade, change-window, ip-allowlist)
-must be computed at ingest — the rules match them but do not compute them.
+booleans (impossible-travel, cross-tenant, firmware-downgrade, change-window, ip-allowlist) are
+computed by the `Enricher` at the **correlation read/eval boundary** (`CorrelationScheduler`
+enriches each window before evaluation), so they are derived from whatever shippers land in
+`surf-events-*` without requiring a shipper to compute them. `enrich()` is idempotent, so if a
+future write-side ingest path bakes the flags in, the read-side pass leaves them untouched.
+
+**Caveat:** the enricher's reference data is still `DEMO_REFERENCE_CONFIG` (demo geo/CIDR/change
+calendar/tenant map) hardcoded in `main.ts`, and its login/firmware history is process-local
+in-memory. Production must supply reference data from IPAM/CMDB/change-calendar/Keycloak and
+persist (or accept the cold-start/restart reset of) the stateful history.

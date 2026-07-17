@@ -14,8 +14,10 @@
  *
  * The engine is pure with respect to its injected reference data: all mutable
  * state (login history, firmware inventory) lives behind the reference ports, so
- * the flag logic itself is deterministic and unit-testable. Wire it into the
- * EventStore write path so every event is enriched exactly once, at ingest.
+ * the flag logic itself is deterministic and unit-testable. It runs at the
+ * correlation read/eval boundary (CorrelationScheduler), because raw shippers
+ * write un-enriched events straight to OpenSearch; enrich() is idempotent, so an
+ * event already carrying a flag (e.g. baked by a future write path) is left as-is.
  */
 import { getField } from './evaluator.js';
 
@@ -126,25 +128,28 @@ export class Enricher {
     const outcome = str(getField(event, 'event.outcome'));
 
     if (action === 'LOGIN' && outcome === 'success') {
-      return this.set(event, 'surf.enrichment.impossible_travel', this.impossibleTravel(event));
+      return this.setIfAbsent(event, 'surf.enrichment.impossible_travel', () => this.impossibleTravel(event));
     }
     if (action === 'query') {
-      return this.set(event, 'surf.enrichment.cross_tenant_mismatch', this.crossTenantMismatch(event));
+      return this.setIfAbsent(event, 'surf.enrichment.cross_tenant_mismatch', () => this.crossTenantMismatch(event));
     }
     if (action === 'firmware_inventory') {
-      return this.set(event, 'surf.enrichment.firmware_downgrade', this.firmwareDowngrade(event));
+      return this.setIfAbsent(event, 'surf.enrichment.firmware_downgrade', () => this.firmwareDowngrade(event));
     }
     if (
       action === 'CREATE' &&
       str(getField(event, 'keycloak.resource_type')) === 'CLIENT' &&
       getField(event, 'keycloak.service_account_enabled') === true
     ) {
-      const ts = str(getField(event, '@timestamp')) ?? new Date().toISOString();
-      return this.set(event, 'surf.enrichment.in_change_window', this.refs.changeWindow.isOpen(ts));
+      return this.setIfAbsent(event, 'surf.enrichment.in_change_window', () =>
+        this.refs.changeWindow.isOpen(str(getField(event, '@timestamp')) ?? new Date().toISOString()),
+      );
     }
     if (action === 'connection_authorized') {
-      const ip = str(getField(event, 'source.ip'));
-      return this.set(event, 'surf.enrichment.ip_allowlisted', ip !== undefined && this.refs.allowlist.allows(ip));
+      return this.setIfAbsent(event, 'surf.enrichment.ip_allowlisted', () => {
+        const ip = str(getField(event, 'source.ip'));
+        return ip !== undefined && this.refs.allowlist.allows(ip);
+      });
     }
     return event;
   }
@@ -183,7 +188,14 @@ export class Enricher {
     return compareSemver(reported, last) < 0;
   }
 
-  private set(event: Event, key: string, value: boolean): Event {
-    return { ...event, [key]: value };
+  /**
+   * Sets `key` only if the event does not already carry it, so enriching an
+   * already-enriched event (e.g. one re-read at eval time after being enriched
+   * at write time) is idempotent and never recomputes — critical because a
+   * narrow eval window may lack the history the original computation had.
+   */
+  private setIfAbsent(event: Event, key: string, compute: () => boolean): Event {
+    if (getField(event, key) !== undefined) return event;
+    return { ...event, [key]: compute() };
   }
 }
