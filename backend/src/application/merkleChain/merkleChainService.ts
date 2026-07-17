@@ -37,7 +37,7 @@ export class MerkleChainService {
   start(): void {
     const intervalMs = this.config.rollupIntervalMinutes * 60_000;
     this.timer = setInterval(() => {
-      void this.rollupPreviousHour().catch((err) => {
+      void this.rollupDue().catch((err) => {
         this.log.error({ err }, 'hash-chain rollup failed');
         this.onRollup?.(false);
       });
@@ -58,11 +58,52 @@ export class MerkleChainService {
     return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
 
+  /** The hour bucket one hour after `hourIso`. */
+  static addHour(hourIso: string): string {
+    const d = new Date(hourIso);
+    d.setUTCHours(d.getUTCHours() + 1);
+    return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  /**
+   * Contiguous hour buckets that still need notarising: from the hour after
+   * `lastHour` through `target` inclusive (capped per call so a long outage
+   * catches up over several ticks rather than one huge loop). With no ledger
+   * yet, only `target` — history before first boot is not retro-notarised.
+   */
+  static hoursBetween(lastHour: string | undefined, target: string, cap = 168): string[] {
+    if (lastHour === undefined) return [target];
+    const targetMs = Date.parse(target);
+    const hours: string[] = [];
+    for (let h = MerkleChainService.addHour(lastHour); Date.parse(h) <= targetMs && hours.length < cap; h = MerkleChainService.addHour(h)) {
+      hours.push(h);
+    }
+    return hours;
+  }
+
   async rollupPreviousHour(now: Date = new Date()): Promise<HashchainLedgerEntry> {
     const hour = MerkleChainService.previousHourBucket(now);
     const entry = await this.rollupHour(hour);
     this.onRollup?.(true);
     return entry;
+  }
+
+  /**
+   * Notarises every hour still missing from the ledger up to the most recent
+   * complete hour, oldest first. This makes a transient signer/WORM failure
+   * self-healing: the failed hour is simply re-attempted on the next tick
+   * (rollupHour appends nothing until both WORM and ledger succeed), instead of
+   * being permanently skipped when the scheduler advances to the next hour.
+   */
+  async rollupDue(now: Date = new Date()): Promise<HashchainLedgerEntry[]> {
+    const target = MerkleChainService.previousHourBucket(now);
+    const last = await this.ledger.latest();
+    const done: HashchainLedgerEntry[] = [];
+    for (const hour of MerkleChainService.hoursBetween(last?.hour, target)) {
+      done.push(await this.rollupHour(hour)); // throws on failure → retried next tick
+      this.onRollup?.(true);
+    }
+    return done;
   }
 
   async rollupHour(hour: string): Promise<HashchainLedgerEntry> {
@@ -110,6 +151,12 @@ export class MerkleChainService {
       }
       if (prevRoot !== undefined && (entry.prevRoot !== prevRoot || entry.prevHour !== prevHour)) {
         failures.push({ hour: entry.hour, reason: 'broken chain linkage (prevRoot/prevHour mismatch)' });
+      }
+      // A missing hour still linkage-checks (each entry points at the real prior
+      // entry), so detect gaps explicitly: consecutive entries must be one hour
+      // apart. A gap means an hour of events was never notarised.
+      if (prevHour !== undefined && entry.hour !== MerkleChainService.addHour(prevHour)) {
+        failures.push({ hour: entry.hour, reason: `gap: no rollup between ${prevHour} and ${entry.hour}` });
       }
       const message = new TextEncoder().encode(`${entry.hour}:${entry.root}:${entry.prevRoot ?? ''}`);
       const valid = await this.signer.verify(message, Buffer.from(entry.sig, 'hex'));

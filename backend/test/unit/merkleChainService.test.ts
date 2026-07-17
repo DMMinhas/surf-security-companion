@@ -91,4 +91,39 @@ describe('MerkleChainService', () => {
     const bucket = MerkleChainService.previousHourBucket(new Date('2026-07-14T09:37:12.500Z'));
     expect(bucket).toBe('2026-07-14T08:00:00Z');
   });
+
+  it('rollupDue() back-fills every missed hour so a transient failure self-heals', async () => {
+    const { ledger, events, eventStore, ledgerRepo, blobs } = fakeStores();
+    for (const h of ['08', '09', '10']) {
+      events.set(`2026-07-14T${h}:00:00Z`, [{ id: `e${h}`, contentHash: `h${h}`, bytes: 10 }]);
+    }
+    const svc = new MerkleChainService(eventStore, ledgerRepo, blobs, fakeSigner(), config, log);
+
+    // Only 08:00 got notarised (09:00 "failed"); the scheduler is now at 11:30.
+    await svc.rollupHour('2026-07-14T08:00:00Z');
+    await svc.rollupDue(new Date('2026-07-14T11:30:00Z')); // previous hour = 10:00
+
+    expect(ledger.map((e) => e.hour)).toEqual([
+      '2026-07-14T08:00:00Z',
+      '2026-07-14T09:00:00Z',
+      '2026-07-14T10:00:00Z',
+    ]);
+    const result = await svc.verify('2026-07-14T00:00:00Z', '2026-07-14T23:00:00Z');
+    expect(result.ok).toBe(true); // contiguous, linked, no gap
+  });
+
+  it('verify() detects a missing hour (gap) even though linkage still holds', async () => {
+    const { events, eventStore, ledgerRepo, blobs } = fakeStores();
+    events.set('2026-07-14T08:00:00Z', [{ id: 'e1', contentHash: 'h1', bytes: 10 }]);
+    events.set('2026-07-14T10:00:00Z', [{ id: 'e3', contentHash: 'h3', bytes: 10 }]);
+    const svc = new MerkleChainService(eventStore, ledgerRepo, blobs, fakeSigner(), config, log);
+
+    // 09:00 was never notarised; 10:00 links straight to 08:00.
+    await svc.rollupHour('2026-07-14T08:00:00Z');
+    await svc.rollupHour('2026-07-14T10:00:00Z');
+
+    const result = await svc.verify('2026-07-14T00:00:00Z', '2026-07-14T23:00:00Z');
+    expect(result.ok).toBe(false);
+    expect(result.failures.some((f) => f.reason.startsWith('gap'))).toBe(true);
+  });
 });
