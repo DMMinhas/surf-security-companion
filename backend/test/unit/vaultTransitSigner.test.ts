@@ -111,4 +111,34 @@ describe('VaultTransitSigner', () => {
     const signer = makeSigner(vault.fetchImpl);
     await expect(signer.sign(new TextEncoder().encode('m'))).rejects.toThrow(/Vault transit sign failed: 403/);
   });
+
+  it('verifies a signature made under an earlier key version after rotation', async () => {
+    // Two key versions: v1 signed the historical rollup, v2 is now latest.
+    const v1 = ed.utils.randomPrivateKey();
+    const v2 = ed.utils.randomPrivateKey();
+    const pub1 = await ed.getPublicKeyAsync(v1);
+    const pub2 = await ed.getPublicKeyAsync(v2);
+    const fetchImpl = (async (url: string | URL): Promise<Response> => {
+      if (String(url).includes('/transit/keys/')) {
+        const body = {
+          data: {
+            latest_version: 2,
+            keys: {
+              '1': { public_key: Buffer.from(pub1).toString('base64') },
+              '2': { public_key: Buffer.from(pub2).toString('base64') },
+            },
+          },
+        };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const signer = makeSigner(fetchImpl);
+    const message = new TextEncoder().encode('2026-07-01T10:00:00Z:oldRoot:prevRoot');
+    const oldSig = await ed.signAsync(message, v1); // signed under the now-superseded version
+
+    expect(await signer.verify(message, oldSig)).toBe(true); // still verifiable post-rotation
+    expect(await signer.publicKeyHex()).toBe(Buffer.from(pub2).toString('hex')); // latest is v2
+  });
 });

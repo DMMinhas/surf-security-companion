@@ -66,6 +66,12 @@ vault write -f transit/keys/surf-hashchain type=ed25519        # key is generate
 vault read  transit/keys/surf-hashchain                        # publish public_key to auditors
 ```
 
+**Verifying the chain** (`npm run verify:hashchain`) picks the check method to match the signer:
+set `HASHCHAIN_PUBLIC_KEY_HEX` to the published key for a Vault-free, token-free auditor run
+(preferred); or, with `HASHCHAIN_SIGNER=vault` + `VAULT_ADDR`/`VAULT_TOKEN` (read on
+`transit/keys`), it verifies against **all** key versions so a rotated chain still verifies; or
+it falls back to the on-disk key in soft-key mode. Verification never needs the signing capability.
+
 ### Vault policies (per role)
 
 ```hcl
