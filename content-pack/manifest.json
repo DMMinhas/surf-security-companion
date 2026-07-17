@@ -1,0 +1,254 @@
+{
+  "name": "SURF KRITIS Detection Pack",
+  "version": "2026.07.1",
+  "generatedAt": "2026-07-17T16:55:26.260Z",
+  "ruleCount": 15,
+  "contentHash": "30951d5bc9fa30cfdf0b336f5e05c5be396aea474cca98e76184eebdb6bffe88",
+  "rules": [
+    {
+      "fileId": "R-01",
+      "id": "8c4b7a10-2f4e-4b8a-9c31-6a4c1d2e0f01",
+      "title": "Keycloak brute-force login",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1110"
+      ],
+      "ics": [],
+      "tactics": [
+        "credential_access"
+      ],
+      "threatId": "AV-01",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-02",
+      "id": "5d9e2c44-1b7f-4a63-8e02-93f5c7ab0f02",
+      "title": "Impossible-travel login for VNB user",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1078"
+      ],
+      "ics": [],
+      "tactics": [
+        "initial_access"
+      ],
+      "threatId": "AV-02",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-03",
+      "id": "7a1f0d38-6c2e-49b5-b1d4-40e8a9cd0f03",
+      "title": "Successful login after MFA prompt bombing",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1621"
+      ],
+      "ics": [],
+      "tactics": [
+        "credential_access"
+      ],
+      "threatId": "AV-03",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-04",
+      "id": "1e6b8f52-3d9a-4c07-a8b5-72c0d1ef0f04",
+      "title": "Cross-tenant query",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1213"
+      ],
+      "ics": [],
+      "tactics": [
+        "collection"
+      ],
+      "threatId": "AV-04",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-05",
+      "id": "9f3c5e71-8a04-4d26-bc98-15d7e2ab0f05",
+      "title": "JWT signature validation failure spike",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1078.004"
+      ],
+      "ics": [],
+      "tactics": [
+        "initial_access"
+      ],
+      "threatId": "AV-05",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-06",
+      "id": "2b8d4f96-0c3a-4e15-9d67-84a1b3cd0f06",
+      "title": "Command signing service failure spike",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1565"
+      ],
+      "ics": [],
+      "tactics": [
+        "impact"
+      ],
+      "threatId": "AV-11",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-07",
+      "id": "3f2d1c76-9a5b-4e0e-b7f4-9bde5b60c9f2",
+      "title": "Unsigned command received at MQTT broker",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [],
+      "ics": [
+        "T0836"
+      ],
+      "tactics": [],
+      "threatId": "AV-12",
+      "complianceCount": 3
+    },
+    {
+      "fileId": "R-08",
+      "id": "4c7e9a23-5b1d-4f80-92c6-37f8d0ab0f08",
+      "title": "§14a mass-curtailment rate anomaly",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [],
+      "ics": [
+        "T0813"
+      ],
+      "tactics": [],
+      "threatId": "AV-12",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-09",
+      "id": "6a2c8e50-7d4b-4913-85f0-29b6c4ef0f09",
+      "title": "Safety-setpoint override attempt",
+      "level": "critical",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [],
+      "ics": [
+        "T0836"
+      ],
+      "tactics": [],
+      "threatId": "AV-13",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-10",
+      "id": "0d5f7b31-4e8c-4a29-b7d1-58c3a9ef0f10",
+      "title": "EMS firmware version rollback",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [],
+      "ics": [
+        "T0857"
+      ],
+      "tactics": [],
+      "threatId": "AV-14",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-11",
+      "id": "8e1a3c67-9f5d-4b02-a4e8-61d0b2cf0f11",
+      "title": "Repeated schedule delivery failures to EMS",
+      "level": "medium",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [],
+      "ics": [
+        "T0815"
+      ],
+      "tactics": [],
+      "threatId": "AV-15",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-12",
+      "id": "b3f6d982-1a4c-4e57-90b3-7c5e8daf0f12",
+      "title": "Privileged role grant in Keycloak admin",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1098.003"
+      ],
+      "ics": [],
+      "tactics": [
+        "persistence"
+      ],
+      "threatId": "AV-06",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-13",
+      "id": "c7a2e514-8d0b-4f36-b9a7-42f1c6bf0f13",
+      "title": "New service account outside change window",
+      "level": "medium",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1136.003"
+      ],
+      "ics": [],
+      "tactics": [
+        "persistence"
+      ],
+      "threatId": "AV-07",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-14",
+      "id": "d9b4f036-2c7e-4a81-8f52-90e3d7af0f14",
+      "title": "Kubernetes exec into a production pod",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1609"
+      ],
+      "ics": [],
+      "tactics": [
+        "execution"
+      ],
+      "threatId": "AV-08",
+      "complianceCount": 4
+    },
+    {
+      "fileId": "R-15",
+      "id": "e0c5a147-3b8d-4692-a1c4-58f2e9bf0f15",
+      "title": "DB access from IP outside allow-list",
+      "level": "high",
+      "status": "stable",
+      "enabled": true,
+      "enterprise": [
+        "T1078"
+      ],
+      "ics": [],
+      "tactics": [
+        "lateral_movement"
+      ],
+      "threatId": "AV-09",
+      "complianceCount": 4
+    }
+  ]
+}

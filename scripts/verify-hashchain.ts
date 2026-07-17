@@ -11,6 +11,7 @@ import pg from 'pg';
 import { Client as OsClient } from '@opensearch-project/opensearch';
 import * as Minio from 'minio';
 import * as ed from '@noble/ed25519';
+import { VaultTransitSigner } from '../backend/src/infrastructure/integrations/vaultTransitSigner.js';
 import 'dotenv/config';
 
 interface LedgerRow {
@@ -24,6 +25,39 @@ interface LedgerRow {
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
+/**
+ * Selects how signatures are checked, matching the backend's signer:
+ *   1. HASHCHAIN_PUBLIC_KEY_HEX  — auditor-independent: verify with the published
+ *      public key alone (no key file, no Vault access). Preferred for auditors.
+ *   2. HASHCHAIN_SIGNER=vault    — verify against the Transit key's public keys
+ *      (all versions, so a rotated chain still verifies). Needs read on transit/keys.
+ *   3. otherwise (soft key)      — derive the public key from the on-disk private key.
+ */
+async function buildVerifier(): Promise<(message: Uint8Array, sig: Uint8Array) => Promise<boolean>> {
+  const pubHex = process.env['HASHCHAIN_PUBLIC_KEY_HEX'];
+  if (pubHex) {
+    const pub = Uint8Array.from(Buffer.from(pubHex.trim(), 'hex'));
+    return (m, s) => ed.verifyAsync(s, m, pub);
+  }
+  if (process.env['HASHCHAIN_SIGNER'] === 'vault') {
+    const addr = process.env['VAULT_ADDR'];
+    const token = process.env['VAULT_TOKEN'];
+    if (!addr || !token) {
+      throw new Error('HASHCHAIN_SIGNER=vault requires VAULT_ADDR and VAULT_TOKEN (or set HASHCHAIN_PUBLIC_KEY_HEX)');
+    }
+    const signer = new VaultTransitSigner({
+      addr,
+      token,
+      transitKey: process.env['VAULT_TRANSIT_KEY'] ?? 'surf-hashchain',
+      ...(process.env['VAULT_NAMESPACE'] ? { namespace: process.env['VAULT_NAMESPACE'] } : {}),
+    });
+    return (m, s) => signer.verify(m, s);
+  }
+  const keyHex = readFileSync(process.env['HASHCHAIN_SIGNING_KEY_PATH'] ?? './secrets/hashchain-ed25519.key', 'utf8').trim();
+  const pub = await ed.getPublicKeyAsync(Uint8Array.from(Buffer.from(keyHex, 'hex')));
+  return (m, s) => ed.verifyAsync(s, m, pub);
 }
 
 function canonicalJson(value: unknown): string {
@@ -85,8 +119,7 @@ async function main(): Promise<void> {
     secretKey: process.env['MINIO_SECRET_KEY'] ?? '',
   });
 
-  const keyHex = readFileSync(process.env['HASHCHAIN_SIGNING_KEY_PATH'] ?? './secrets/hashchain-ed25519.key', 'utf8').trim();
-  const publicKey = await ed.getPublicKeyAsync(Uint8Array.from(Buffer.from(keyHex, 'hex')));
+  const verifySig = await buildVerifier();
 
   const { rows } = await pool.query<LedgerRow>(
     'SELECT hour, root, sig, prev_hour, prev_root FROM hashchain_ledger WHERE hour >= $1 AND hour <= $2 ORDER BY hour',
@@ -116,7 +149,7 @@ async function main(): Promise<void> {
 
     // 2. verify signature
     const message = new TextEncoder().encode(`${hourIso}:${row.root}:${row.prev_root ?? ''}`);
-    const sigOk = await ed.verifyAsync(Uint8Array.from(Buffer.from(row.sig, 'hex')), message, publicKey).catch(() => false);
+    const sigOk = await verifySig(message, Uint8Array.from(Buffer.from(row.sig, 'hex'))).catch(() => false);
     if (!sigOk) {
       console.error(`✗ ${hourIso}: INVALID SIGNATURE`);
       failures += 1;

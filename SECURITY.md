@@ -34,3 +34,10 @@ changelog in GitHub Releases).
 - Images cosign-signed (Sigstore keyless, Rekor transparency log); verify before deploy.
 - CI gates: Trivy, CodeQL, Gitleaks — fail on High/Critical or exposed secrets.
 - SBOM (CycloneDX) published per build.
+
+## Threat model
+
+A STRIDE threat model — trust boundaries, assets, threat register, priority kill-chains, and the
+assumptions the controls rest on — is maintained at [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+It is the artefact an independent penetration test / KRITIS review validates, and it must be
+re-run on any change to the action path, auth model, tenant isolation, or the crypto pipeline.

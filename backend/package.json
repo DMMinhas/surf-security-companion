@@ -11,9 +11,9 @@
     "start": "node dist/main.js",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --dir test/unit",
+    "test": "vitest run test/unit test/rules",
     "test:integration": "vitest run --config test/integration/vitest.integration.config.ts",
-    "test:rules": "vitest run --dir test/rules"
+    "test:rules": "vitest run test/rules"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

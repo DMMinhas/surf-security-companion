@@ -29,6 +29,8 @@ import {
   SlackConnector,
 } from './infrastructure/integrations/connectors.js';
 import { FileEd25519Signer } from './infrastructure/integrations/ed25519Signer.js';
+import { VaultTransitSigner } from './infrastructure/integrations/vaultTransitSigner.js';
+import type { Signer } from './domain/ports/connectors.js';
 import { AuthzMiddleware } from './infrastructure/http/middleware/authz.js';
 import { AuditService } from './application/audit/auditService.js';
 import { AlertService } from './application/alerts/alertService.js';
@@ -42,6 +44,8 @@ import { GdprService } from './application/gdpr/gdprService.js';
 import { MerkleChainService } from './application/merkleChain/merkleChainService.js';
 import { SigmaRuleLoader } from './correlation/loader.js';
 import { RuleEvaluator } from './correlation/evaluator.js';
+import { Enricher } from './correlation/enrichment.js';
+import { DefaultReferenceData, DEMO_REFERENCE_CONFIG } from './correlation/enrichmentReferenceData.js';
 import { CorrelationScheduler, DEFAULT_SCHEDULER_CONFIG } from './correlation/scheduler.js';
 import { buildServer } from './server.js';
 import type { SigmaRule } from './domain/entities/sigmaRule.js';
@@ -55,11 +59,29 @@ async function main(): Promise<void> {
   const pgPool = createPool(config);
   const opensearch = createOpenSearchClient(config);
   const blobs = new MinioBlobStore(config);
-  const signer = new FileEd25519Signer(config.hashchain.signingKeyPath);
+  // Hash-chain signer: Vault Transit in production (private key stays in Vault),
+  // soft on-disk key for dev/MVP. Verification is public-key-local either way.
+  const signer: Signer =
+    config.hashchain.signer === 'vault'
+      ? new VaultTransitSigner({
+          addr: config.hashchain.vaultAddr!,
+          token: config.hashchain.vaultToken!,
+          transitKey: config.hashchain.vaultTransitKey,
+          ...(config.hashchain.vaultNamespace ? { namespace: config.hashchain.vaultNamespace } : {}),
+        })
+      : new FileEd25519Signer(config.hashchain.signingKeyPath);
+  log.info({ signer: config.hashchain.signer }, 'hash-chain signer selected');
 
   const alertRepo = new OpenSearchAlertRepository(opensearch);
   await alertRepo.ensureIndex();
   const eventStore = new OpenSearchEventStore(opensearch);
+  // Enrichment runs at the correlation (read/eval) boundary, not at write: raw
+  // shippers write straight to surf-events-*, so computing surf.enrichment.*
+  // (R-02/04/10/13/15) as the scheduler reads the window is what makes those
+  // rules fire on real telemetry. Reference data is demo-seeded here; production
+  // supplies it from IPAM/CMDB/change calendar/tenant directory.
+  const enrichmentRefs = new DefaultReferenceData(DEMO_REFERENCE_CONFIG);
+  const enricher = new Enricher(enrichmentRefs);
   const caseRepo = new PostgresCaseRepository(pgPool);
   const auditRepo = new PostgresAuditRepository(pgPool);
   const runRepo = new PostgresPlaybookRunRepository(pgPool);
@@ -137,6 +159,7 @@ async function main(): Promise<void> {
     DEFAULT_SCHEDULER_CONFIG,
     log,
     (ruleId, count) => metrics.ruleFired.inc({ rule_id: ruleId }, count),
+    { enricher, refs: enrichmentRefs },
   );
 
   // ---- HTTP

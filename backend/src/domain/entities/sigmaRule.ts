@@ -10,6 +10,8 @@ export interface SigmaRule {
   date: string;
   references: string[];
   level: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+  /** Sigma maturity; absent on programmatically-built rules (treated as unknown). */
+  status?: 'stable' | 'test' | 'experimental' | 'deprecated' | 'unsupported';
   tags: string[];
   logsource: { product?: string; service?: string; category?: string };
   detection: SigmaDetection;

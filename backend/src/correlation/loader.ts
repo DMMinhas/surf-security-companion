@@ -73,6 +73,7 @@ export class SigmaRuleLoader {
       date: String(doc['date']),
       references: doc['references'] as string[],
       level: doc['level'] as SigmaRule['level'],
+      ...(doc['status'] !== undefined ? { status: doc['status'] as SigmaRule['status'] } : {}),
       tags: doc['tags'] as string[],
       logsource: doc['logsource'] as SigmaRule['logsource'],
       detection,

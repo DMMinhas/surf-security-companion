@@ -23,6 +23,8 @@
     "verify:hashchain": "tsx scripts/verify-hashchain.ts",
     "rules:convert": "tsx scripts/convert-sigma.ts",
     "rules:validate": "tsx scripts/convert-sigma.ts --validate-only",
+    "pack:build": "tsx scripts/build-content-pack.ts",
+    "pack:check": "tsx scripts/build-content-pack.ts --check",
     "compliance:render": "tsx scripts/render-compliance.ts"
   },
   "devDependencies": {

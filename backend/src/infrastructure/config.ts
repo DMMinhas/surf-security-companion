@@ -55,10 +55,26 @@ const configSchema = z.object({
     objectLockYears: z.coerce.number().int().min(1).default(1),
   }),
 
-  hashchain: z.object({
-    signingKeyPath: z.string().min(1),
-    rollupIntervalMinutes: z.coerce.number().int().min(1).max(60).default(60),
-  }),
+  hashchain: z
+    .object({
+      // 'file' = soft Ed25519 key on disk (dev/MVP); 'vault' = HashiCorp Vault
+      // Transit (prod — private key never leaves Vault). See docs/SECRETS.md §5.
+      signer: z.enum(['file', 'vault']).default('file'),
+      signingKeyPath: z.string().default(''),
+      vaultAddr: z.string().url().optional(),
+      vaultToken: z.string().optional(),
+      vaultTransitKey: z.string().default('surf-hashchain'),
+      vaultNamespace: z.string().optional(),
+      rollupIntervalMinutes: z.coerce.number().int().min(1).max(60).default(60),
+    })
+    .superRefine((v, ctx) => {
+      if (v.signer === 'file' && v.signingKeyPath.length === 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['signingKeyPath'], message: 'required when hashchain.signer=file' });
+      }
+      if (v.signer === 'vault' && (!v.vaultAddr || !v.vaultToken)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['vaultAddr'], message: 'vaultAddr and vaultToken required when hashchain.signer=vault' });
+      }
+    }),
 
   upstream: z.object({
     flexApiUrl: z.string().url(),
@@ -125,7 +141,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       objectLockYears: env['MINIO_OBJECT_LOCK_YEARS'],
     },
     hashchain: {
+      signer: env['HASHCHAIN_SIGNER'],
       signingKeyPath: env['HASHCHAIN_SIGNING_KEY_PATH'],
+      vaultAddr: env['VAULT_ADDR'],
+      vaultToken: env['VAULT_TOKEN'],
+      vaultTransitKey: env['VAULT_TRANSIT_KEY'],
+      vaultNamespace: env['VAULT_NAMESPACE'],
       rollupIntervalMinutes: env['HASHCHAIN_ROLLUP_INTERVAL_MINUTES'],
     },
     upstream: {

@@ -13,6 +13,7 @@
  */
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
@@ -20,10 +21,15 @@ import addFormats from 'ajv-formats';
 const RULES_DIR = process.env['RULES_DIR'] ?? path.join(process.cwd(), 'rules');
 const OUTPUT_DIR = process.env['OUTPUT_DIR'] ?? path.join(process.cwd(), 'build', 'wazuh-rules');
 const BASE_RULE_ID = 100100;
+// Composite (conjunctive) rules get their own id from a band offset far above the
+// primary ids (BASE_RULE_ID + index), so a composite can never collide with a
+// primary until the roster exceeds this offset. Primaries: 100100+; composites:
+// 101000+. See docs/RULE_AUTHORING.md.
+const COMPOSITE_RULE_ID_OFFSET = 900;
 
 const LEVEL_MAP: Record<string, number> = { critical: 15, high: 12, medium: 8, low: 5, informational: 3 };
 
-interface SigmaDoc {
+export interface SigmaDoc {
   id: string;
   title: string;
   description: string;
@@ -38,24 +44,33 @@ function xmlEscape(s: string): string {
   return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
-function selectionToFields(selection: Record<string, unknown>): string[] {
+// Escape PCRE2 metacharacters so a Sigma value matches literally. Without this a
+// value like "10.0.4.12" compiles to a pattern where each "." matches any char
+// (over-match) — which on a negate="yes" field silently suppresses alerts the
+// rule should raise — and a value with "(" or "+" emits invalid PCRE2 that makes
+// wazuh-manager reject the whole ruleset.
+function regexEscape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function selectionToFields(selection: Record<string, unknown>, negate = false): string[] {
   const lines: string[] = [];
+  const neg = negate ? ' negate="yes"' : '';
   for (const [fieldExpr, value] of Object.entries(selection)) {
     const [field, modifier] = fieldExpr.split('|', 2);
     if (!field) continue;
     const values = Array.isArray(value) ? value : [value];
-    const pattern = values.map((v) => xmlEscape(String(v))).join('|');
-    const negate = '';
+    const pattern = values.map((v) => xmlEscape(regexEscape(String(v)))).join('|');
     if (modifier === 'contains') {
-      lines.push(`    <field name="${xmlEscape(field)}" type="pcre2"${negate}>${pattern}</field>`);
+      lines.push(`    <field name="${xmlEscape(field)}" type="pcre2"${neg}>${pattern}</field>`);
     } else {
-      lines.push(`    <field name="${xmlEscape(field)}" type="pcre2"${negate}>^(?:${pattern})$</field>`);
+      lines.push(`    <field name="${xmlEscape(field)}" type="pcre2"${neg}>^(?:${pattern})$</field>`);
     }
   }
   return lines;
 }
 
-function convertRule(doc: SigmaDoc, ruleId: number): string {
+export function convertRule(doc: SigmaDoc, ruleId: number): string {
   const condition = String(doc.detection['condition'] ?? 'selection');
   const timeframe = doc.detection['timeframe'] ? String(doc.detection['timeframe']) : undefined;
   const agg = /\|\s*count\((.*?)\)\s*(?:by\s+([\w.]+)\s*)?(>=|>)\s*(\d+)/.exec(condition);
@@ -65,8 +80,30 @@ function convertRule(doc: SigmaDoc, ruleId: number): string {
     .filter((t) => /^attack\.(?:ics\.)?t\d{4}/i.test(t))
     .map((t) => t.replace(/^attack\.(ics\.)?/i, '').toUpperCase());
 
+  // Conjunctive aggregation `(sel_a | count()...) and sel_b` → a Wazuh composite:
+  // a silent frequency precondition on sel_a plus a correlated rule triggered by
+  // sel_b via <if_matched_sid>. Mirrors the portal, which fires when the count
+  // crosses AND sel_b also matches in the window (cross-entity: no <same_field>).
+  const conjMatch = /\)\s+and\s+(?!not\b)([\w]+)\s*$/.exec(condition);
+  if (agg && conjMatch?.[1]) {
+    const secondSel = doc.detection[conjMatch[1]];
+    if (typeof secondSel === 'object' && secondSel !== null && !Array.isArray(secondSel)) {
+      return convertConjunctive(doc, ruleId, {
+        frequency: agg[3] === '>=' ? Number(agg[4]) : Number(agg[4]) + 1,
+        byField: agg[2],
+        secondSel: secondSel as Record<string, unknown>,
+        level,
+        mitre,
+        timeframeSecs: timeframe ? toSeconds(timeframe) : 300,
+      });
+    }
+  }
+
   const lines: string[] = [];
-  const frequency = agg ? Number(agg[4]) + 1 : undefined;
+  // Wazuh fires once `frequency` events match within the timeframe, so `>= N`
+  // maps to frequency N and `> N` to N+1. Treating both as N+1 (the old
+  // behaviour) made `>=` rules miss the boundary count — R-11 fired at 11, not 10.
+  const frequency = agg ? (agg[3] === '>=' ? Number(agg[4]) : Number(agg[4]) + 1) : undefined;
   const timeframeSecs = timeframe ? toSeconds(timeframe) : undefined;
 
   lines.push(
@@ -79,10 +116,21 @@ function convertRule(doc: SigmaDoc, ruleId: number): string {
   // primary selection (first non-filter mapping)
   for (const [key, value] of Object.entries(doc.detection)) {
     if (key === 'condition' || key === 'timeframe') continue;
-    if (key.startsWith('filter')) continue; // negations are enforced by the portal-side evaluator
+    if (key.startsWith('filter')) continue;
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       lines.push(...selectionToFields(value as Record<string, unknown>));
       break;
+    }
+  }
+  // `... and not filter_x`: emit each referenced filter as negated Wazuh fields so
+  // the exclusion runs at the sensor, not portal-side only. A single-field filter
+  // translates exactly; a multi-field filter is NOT(f1 and f2) = (not f1) or
+  // (not f2), which one Wazuh rule can't express, so those stay portal-enforced.
+  for (const [, name] of condition.matchAll(/\bnot\s+([\w]+)/g)) {
+    const filterSel = name ? doc.detection[name] : undefined;
+    if (typeof filterSel === 'object' && filterSel !== null && !Array.isArray(filterSel)) {
+      const fields = filterSel as Record<string, unknown>;
+      if (Object.keys(fields).length === 1) lines.push(...selectionToFields(fields, true));
     }
   }
   if (agg?.[2]) lines.push(`    <same_field>${xmlEscape(agg[2])}</same_field>`);
@@ -91,6 +139,63 @@ function convertRule(doc: SigmaDoc, ruleId: number): string {
   lines.push(`    <group>surf,sigma,${xmlEscape(doc.level)}</group>`);
   lines.push('  </rule>');
   return lines.join('\n');
+}
+
+interface ConjunctiveCtx {
+  frequency: number;
+  byField: string | undefined;
+  secondSel: Record<string, unknown>;
+  level: number;
+  mitre: string[];
+  timeframeSecs: number;
+}
+
+/** First non-filter selection mapping — the aggregated side of a conjunction. */
+function firstSelection(doc: SigmaDoc): Record<string, unknown> {
+  for (const [key, value] of Object.entries(doc.detection)) {
+    if (key === 'condition' || key === 'timeframe' || key.startsWith('filter')) continue;
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+  return {};
+}
+
+/**
+ * Emits two Wazuh rules for a `(sel_a | count()...) and sel_b` condition:
+ *   1. a silent (level 0) frequency precondition on sel_a, and
+ *   2. a correlated alert on sel_b gated on the precondition via <if_matched_sid>.
+ * The composite rule id is drawn from a separate high band
+ * (ruleId + COMPOSITE_RULE_ID_OFFSET) so it never collides with a primary id.
+ */
+function convertConjunctive(doc: SigmaDoc, ruleId: number, ctx: ConjunctiveCtx): string {
+  const productFields = (out: string[]): void => {
+    if (doc.logsource.product) {
+      out.push(`    <decoded_as>json</decoded_as>`);
+      out.push(`    <field name="observer.product" type="pcre2">^${xmlEscape(doc.logsource.product)}$</field>`);
+    }
+  };
+
+  const pre: string[] = [];
+  pre.push(`  <rule id="${ruleId}" level="0" frequency="${ctx.frequency}" timeframe="${ctx.timeframeSecs}">`);
+  productFields(pre);
+  pre.push(...selectionToFields(firstSelection(doc)));
+  if (ctx.byField) pre.push(`    <same_field>${xmlEscape(ctx.byField)}</same_field>`);
+  pre.push(`    <description>${xmlEscape(doc.title)} — precondition [Sigma ${doc.id}]</description>`);
+  pre.push(`    <group>surf,sigma,precondition</group>`);
+  pre.push('  </rule>');
+
+  const comp: string[] = [];
+  comp.push(`  <rule id="${ruleId + COMPOSITE_RULE_ID_OFFSET}" level="${ctx.level}" timeframe="${ctx.timeframeSecs}">`);
+  comp.push(`    <if_matched_sid>${ruleId}</if_matched_sid>`);
+  productFields(comp);
+  comp.push(...selectionToFields(ctx.secondSel));
+  comp.push(`    <description>${xmlEscape(doc.title)} [Sigma ${doc.id}]</description>`);
+  for (const technique of ctx.mitre) comp.push(`    <mitre><id>${technique}</id></mitre>`);
+  comp.push(`    <group>surf,sigma,${xmlEscape(doc.level)}</group>`);
+  comp.push('  </rule>');
+
+  return `${pre.join('\n')}\n\n${comp.join('\n')}`;
 }
 
 function toSeconds(timeframe: string): number {
@@ -139,6 +244,15 @@ function main(): void {
     return;
   }
 
+  // Fail closed on any duplicate <rule id> (e.g. a primary colliding with a
+  // composite): wazuh-manager rejects a ruleset with duplicate ids at startup.
+  const ids = converted.flatMap((r) => [...r.matchAll(/<rule id="(\d+)"/g)].map((m) => m[1]));
+  const dupes = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+  if (dupes.length > 0) {
+    console.error(`\nduplicate Wazuh rule id(s): ${dupes.join(', ')} — id allocation is broken`);
+    process.exit(1);
+  }
+
   const xml = `<!-- Generated by convert-sigma.ts — DO NOT EDIT. Source of truth: /rules/*.yml -->\n<group name="surf,">\n${converted.join('\n\n')}\n</group>\n`;
   if (dryRun) {
     console.log(xml);
@@ -150,4 +264,8 @@ function main(): void {
   console.log(`\nwrote ${files.length} Wazuh rules to ${outPath}`);
 }
 
-main();
+// Run only when executed directly (container/CI); stays importable for the
+// portal↔Wazuh conformance test.
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) main();
