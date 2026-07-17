@@ -44,6 +44,15 @@ function xmlEscape(s: string): string {
   return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
+// Escape PCRE2 metacharacters so a Sigma value matches literally. Without this a
+// value like "10.0.4.12" compiles to a pattern where each "." matches any char
+// (over-match) — which on a negate="yes" field silently suppresses alerts the
+// rule should raise — and a value with "(" or "+" emits invalid PCRE2 that makes
+// wazuh-manager reject the whole ruleset.
+function regexEscape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function selectionToFields(selection: Record<string, unknown>, negate = false): string[] {
   const lines: string[] = [];
   const neg = negate ? ' negate="yes"' : '';
@@ -51,7 +60,7 @@ function selectionToFields(selection: Record<string, unknown>, negate = false): 
     const [field, modifier] = fieldExpr.split('|', 2);
     if (!field) continue;
     const values = Array.isArray(value) ? value : [value];
-    const pattern = values.map((v) => xmlEscape(String(v))).join('|');
+    const pattern = values.map((v) => xmlEscape(regexEscape(String(v)))).join('|');
     if (modifier === 'contains') {
       lines.push(`    <field name="${xmlEscape(field)}" type="pcre2"${neg}>${pattern}</field>`);
     } else {
