@@ -102,6 +102,27 @@ describe('content pack', () => {
     expect(contentHash(mutated)).not.toBe(a); // a real tag change moves the hash
   });
 
+  it('content hash tracks a change to what a selection MATCHES (values, not just field names)', () => {
+    const base = contentHash(rules);
+    // Change a matcher VALUE while keeping the same field name and condition.
+    const revalued = rules.map((r, i) => {
+      if (i !== 0) return r;
+      const [selName, sel] = Object.entries(r.detection.selections)[0]!;
+      const [field] = Object.entries(sel)[0]!;
+      return {
+        ...r,
+        detection: {
+          ...r.detection,
+          selections: {
+            ...r.detection.selections,
+            [selName]: { ...sel, [field]: { kind: 'equals' as const, value: 'MUTATED_MATCH_VALUE' } },
+          },
+        },
+      };
+    });
+    expect(contentHash(revalued)).not.toBe(base);
+  });
+
   it('flags rules that declare a technique but no tactic tag', () => {
     const pack = buildContentPack(rules, OPTS);
     // structural claim, not a magic count: any unmapped entry must genuinely lack tactics

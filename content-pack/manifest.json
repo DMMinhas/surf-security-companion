@@ -1,9 +1,9 @@
 {
   "name": "SURF KRITIS Detection Pack",
   "version": "2026.07.1",
-  "generatedAt": "2026-07-16T19:51:33.584Z",
+  "generatedAt": "2026-07-17T16:55:26.260Z",
   "ruleCount": 15,
-  "contentHash": "ab7159b3bddc56604736640d69d4d1c0be026b436395c2fcd16ef78bd259433a",
+  "contentHash": "30951d5bc9fa30cfdf0b336f5e05c5be396aea474cca98e76184eebdb6bffe88",
   "rules": [
     {
       "fileId": "R-01",

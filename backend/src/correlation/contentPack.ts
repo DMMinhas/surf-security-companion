@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { SigmaRule } from '../domain/entities/sigmaRule.js';
+import type { SigmaMatcher, SigmaRule } from '../domain/entities/sigmaRule.js';
 import { attackTechniques } from '../domain/entities/sigmaRule.js';
 
 /**
@@ -141,10 +141,27 @@ function toPackRule(rule: SigmaRule): PackRuleEntry {
   };
 }
 
+/** Canonical, order-stable string for one field matcher (kind + values). */
+function matcherKey(m: SigmaMatcher): string {
+  switch (m.kind) {
+    case 'equals':
+      return `eq:${String(m.value)}`;
+    case 'in':
+      return `in:${m.values.map(String).sort().join('|')}`;
+    case 'contains':
+      return `contains:${m.value}`;
+    case 'containsAny':
+      return `containsAny:${[...m.values].sort().join('|')}`;
+  }
+}
+
 /**
  * Content hash: sha256 over a canonical projection of each rule (identity +
  * detection-relevant fields), independent of pack version/timestamp and of key
- * ordering. Two builds hash equal iff the rules that matter are unchanged.
+ * ordering. Two builds hash equal iff the rules that matter are unchanged —
+ * which includes what each selection actually MATCHES (field names *and*
+ * matcher values), not just the field names, so editing a matched value moves
+ * the hash and the drift gate catches it.
  */
 export function contentHash(rules: SigmaRule[]): string {
   const projection = rules
@@ -157,7 +174,15 @@ export function contentHash(rules: SigmaRule[]): string {
       status: r.status ?? 'unknown',
       tags: uniqSort(r.tags),
       condition: r.detection.condition,
-      fields: uniqSort(Object.values(r.detection.selections).flatMap((s) => Object.keys(s))),
+      timeframeMs: r.detection.timeframeMs ?? null,
+      selections: Object.entries(r.detection.selections)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, sel]) => ({
+          name,
+          fields: Object.entries(sel)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([field, matcher]) => `${field}=${matcherKey(matcher)}`),
+        })),
     }))
     .sort((a, b) => a.fileId.localeCompare(b.fileId));
   return createHash('sha256').update(JSON.stringify(projection)).digest('hex');
