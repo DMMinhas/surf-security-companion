@@ -146,10 +146,12 @@ export class Enricher {
       );
     }
     if (action === 'connection_authorized') {
-      return this.setIfAbsent(event, 'surf.enrichment.ip_allowlisted', () => {
-        const ip = str(getField(event, 'source.ip'));
-        return ip !== undefined && this.refs.allowlist.allows(ip);
-      });
+      const ip = str(getField(event, 'source.ip'));
+      // No client IP (e.g. a local unix-socket DB connection) → the allowlist
+      // does not apply. Leave the flag unset so R-15 doesn't fire; a missing IP
+      // is not the same as an off-allowlist IP.
+      if (ip === undefined) return event;
+      return this.setIfAbsent(event, 'surf.enrichment.ip_allowlisted', () => this.refs.allowlist.allows(ip));
     }
     return event;
   }

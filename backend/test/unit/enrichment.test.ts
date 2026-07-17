@@ -192,6 +192,16 @@ describe('R-15 · ip_allowlisted', () => {
     });
     expect(out['surf.enrichment.ip_allowlisted']).toBe(true);
   });
+
+  it('leaves the flag unset when there is no client IP (local socket) so R-15 does not fire', () => {
+    const { enrich } = makeEnricher();
+    const out = enrich({
+      'event.action': 'connection_authorized',
+      'user.name': 'soc_app',
+      // no source.ip — a local unix-socket connection
+    });
+    expect('surf.enrichment.ip_allowlisted' in out).toBe(false);
+  });
 });
 
 describe('pass-through', () => {
